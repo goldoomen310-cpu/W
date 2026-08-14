@@ -2968,7 +2968,7 @@ local af=a.load'n'.New
 
 function aa.new(ag,ah,ai,aj)
 local ak=a.load'o'
-local al=ak.Create(true,"Popup",ag.Window,ag.WindUI,ag.WindUI.ScreenGui.KeySystem)
+local al=ak.Create(true,"Popup",ag.Window,ag.WindUI,ag.WindUI.ScreenGui:FindFirstChild(ag.WindUI.GUINames.KeySystem))
 
 local am={}
 
@@ -14504,11 +14504,6 @@ av.WindUI.NotificationGui:Destroy()
 av.WindUI.DropdownGui:Destroy()
 av.WindUI.TooltipGui:Destroy()
 
-local ge=getgenv or function()return shared end
-if ge().WindUI==av.WindUI then
-ge().WindUI=nil
-end
-
 an.DisconnectAll()
 
 return
@@ -15304,6 +15299,24 @@ local at=as.New
 
 local au=a.load't'
 
+local function RandomName()
+local t={"RobloxGui","SystemGui","PlayerListGui","TopBarApp","ChatWindow","HealthGui","BackpackGui","SettingsHub","InspectMenu","GamepadMenu","NotifCenter","EmotesMenu"}
+return t[math.random(1,#t)].."_"..tostring(math.random(10000,99999))
+end
+
+local GUINames={
+Screen=RandomName(),
+Notifications=RandomName(),
+Dropdowns=RandomName(),
+Tooltips=RandomName(),
+Window=RandomName(),
+KeySystem=RandomName(),
+Popups=RandomName(),
+ToolTips=RandomName(),
+}
+
+aa.GUINames=GUINames
+
 local av=protectgui or(syn and syn.protect_gui)or function()end
 
 local function SafeParentUI(C,F)
@@ -15334,14 +15347,14 @@ Scale=aa.UIScale,
 aa.UIScaleObj=ax
 
 aa.ScreenGui=at("ScreenGui",{
-Name="WindUI",
+Name=GUINames.Screen,
 IgnoreGuiInset=true,
 ScreenInsets="None",
 DisplayOrder=-99999,
 },{
 
 at("Folder",{
-Name="Window",
+Name=GUINames.Window,
 }),
 
 
@@ -15350,26 +15363,26 @@ Name="Window",
 
 
 at("Folder",{
-Name="KeySystem",
+Name=GUINames.KeySystem,
 }),
 at("Folder",{
-Name="Popups",
+Name=GUINames.Popups,
 }),
 at("Folder",{
-Name="ToolTips",
+Name=GUINames.ToolTips,
 }),
 })
 
 aa.NotificationGui=at("ScreenGui",{
-Name="WindUI/Notifications",
+Name=GUINames.Notifications,
 IgnoreGuiInset=true,
 })
 aa.DropdownGui=at("ScreenGui",{
-Name="WindUI/Dropdowns",
+Name=GUINames.Dropdowns,
 IgnoreGuiInset=true,
 })
 aa.TooltipGui=at("ScreenGui",{
-Name="WindUI/Tooltips",
+Name=GUINames.Tooltips,
 IgnoreGuiInset=true,
 })
 pcall(av,aa.ScreenGui)
@@ -15523,7 +15536,7 @@ end
 
 function aa.Popup(az,aA)
 aA.WindUI=aa
-return a.load'u'.new(aA,aa.ScreenGui.Popups)
+return a.load'u'.new(aA,aa.ScreenGui:FindFirstChild(aa.GUINames.Popups))
 end
 
 aa.Themes=a.load'v'(aa,as)
@@ -15549,7 +15562,7 @@ end
 
 aA.WindUI=aa
 aA.Window=aa.Window
-aA.Parent=aa.ScreenGui.Window
+aA.Parent=aa.ScreenGui:FindFirstChild(aa.GUINames.Window)
 
 if aa.Window then
 warn"You cannot create more than one window"
@@ -15666,8 +15679,5 @@ end
 
 return h
 end
-
-local ge=getgenv or function()return shared end
-ge().WindUI=aa
 
 return aa
