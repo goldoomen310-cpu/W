@@ -624,6 +624,16 @@ local function GetSchemeValue(Index)
     return Library.Scheme[Index]
 end
 
+setmetatable(Library.Scheme, {
+    __index = function(self, Key)
+        local FallbackKey = SchemeFallback[Key]
+        if FallbackKey then
+            return rawget(self, FallbackKey)
+        end
+        return nil
+    end,
+})
+
 --// Basic Functions \\--
 local function WaitForEvent(Event, Timeout, Condition)
     local Bindable = Instance.new("BindableEvent")
