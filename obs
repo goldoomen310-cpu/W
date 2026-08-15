@@ -8833,7 +8833,7 @@ local function CreateAcrylicBlur()
     }
 end
 
-local Acrylic = CreateAcrylicModule()
+local Acrylic = CreateAcrylicBlur()
 
 function Library:CreateWindow(WindowInfo)
     WindowInfo = Library:Validate(WindowInfo, Templates.Window)
