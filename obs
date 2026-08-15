@@ -265,6 +265,7 @@ local Library = {
         BackgroundColor = Color3.fromRGB(16, 16, 16),
         MainColor = Color3.fromRGB(26, 26, 26),
         AccentColor = Color3.fromRGB(0, 145, 255),
+        ToggleColor = Color3.fromRGB(51, 199, 89),
         OutlineColor = Color3.fromRGB(42, 42, 44),
         FontColor = Color3.new(1, 1, 1),
         Font = Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium),
@@ -5161,10 +5162,9 @@ do
                 return
             end
 
-            CheckboxStroke.Transparency = Toggle.Disabled and 0.5 or 0
-
             if Toggle.Disabled then
                 Label.TextTransparency = 0.8
+                CheckboxStroke.Transparency = 0.5
                 CheckImage.ImageTransparency = Toggle.Value and 0.8 or 1
 
                 Checkbox.BackgroundColor3 = Library.Scheme.BackgroundColor
@@ -5179,9 +5179,16 @@ do
             TweenService:Create(CheckImage, Library.TweenInfo, {
                 ImageTransparency = Toggle.Value and 0 or 1,
             }):Play()
+            TweenService:Create(CheckboxStroke, Library.TweenInfo, {
+                Transparency = Toggle.Value and 1 or 0,
+            }):Play()
 
-            Checkbox.BackgroundColor3 = Library.Scheme.MainColor
-            Library.Registry[Checkbox].BackgroundColor3 = "MainColor"
+            local Fill = TweenService:Create(Checkbox, Library.TweenInfo, {
+                BackgroundColor3 = Toggle.Value and Library.Scheme.AccentColor or Library.Scheme.MainColor,
+            })
+            Fill:Play()
+
+            Library.Registry[Checkbox].BackgroundColor3 = Toggle.Value and "AccentColor" or "MainColor"
         end
 
         function Toggle:OnChanged(Func)
@@ -5385,7 +5392,7 @@ do
             Parent = Button,
         })
         New("UICorner", {
-            CornerRadius = UDim.new(1, 0),
+            CornerRadius = UDim.new(0, 7),
             Parent = Switch,
         })
         New("UIPadding", {
@@ -5407,7 +5414,7 @@ do
             Parent = Switch,
         })
         New("UICorner", {
-            CornerRadius = UDim.new(1, 0),
+            CornerRadius = UDim.new(0, 5),
             Parent = Ball,
         })
 
@@ -5425,11 +5432,11 @@ do
             Switch.BackgroundTransparency = Toggle.Disabled and 0.75 or 0
             SwitchStroke.Transparency = Toggle.Disabled and 0.75 or 0
 
-            Switch.BackgroundColor3 = Toggle.Value and Library.Scheme.AccentColor or Library.Scheme.MainColor
-            SwitchStroke.Color = Toggle.Value and Library.Scheme.AccentColor or Library.Scheme.OutlineColor
+            Switch.BackgroundColor3 = Toggle.Value and Library.Scheme.ToggleColor or Library.Scheme.MainColor
+            SwitchStroke.Color = Toggle.Value and Library.Scheme.ToggleColor or Library.Scheme.OutlineColor
 
-            Library.Registry[Switch].BackgroundColor3 = Toggle.Value and "AccentColor" or "MainColor"
-            Library.Registry[SwitchStroke].Color = Toggle.Value and "AccentColor" or "OutlineColor"
+            Library.Registry[Switch].BackgroundColor3 = Toggle.Value and "ToggleColor" or "MainColor"
+            Library.Registry[SwitchStroke].Color = Toggle.Value and "ToggleColor" or "OutlineColor"
 
             if Toggle.Disabled then
                 Label.TextTransparency = 0.8
