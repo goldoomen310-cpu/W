@@ -207,26 +207,26 @@ local Library = {
     Corners = {},
     SpecificCorners = {},
 
-    --// Animations \\
-    TweenInfo = TweenInfo.new(0.12, Enum.EasingStyle.Quart, Enum.EasingDirection.Out),
+    --// Animations \\--
+    TweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 
-    TabTransitionInfo = TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-    TabSwipeOffset = 20,
+    TabTransitionInfo = TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+    TabSwipeOffset = 26,
     TabSwipeFrom = "bottom",
 
-    WindowAnimationInfo = TweenInfo.new(0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out),
-    DropdownTransitionInfo = TweenInfo.new(0.16, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-    KeyPickerTransitionInfo = TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+    WindowAnimationInfo = TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+    DropdownTransitionInfo = TweenInfo.new(0.18, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+    KeyPickerTransitionInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 
     GroupboxTweenInfo = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
     RotatingChevronTweenInfo = TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out),
 
     Animations = {
-        ToggleWindow = true,
-        TabSwitch = true,
-        Groupbox = true,
-        Dropdown = true,
-        KeyPicker = true
+        ToggleWindow = false,
+        TabSwitch = false,
+        Groupbox = false,
+        Dropdown = false,
+        KeyPicker = false
     },
 
     --// States \\--
@@ -257,22 +257,22 @@ local Library = {
     OriginalMinSize = Vector2.new(480, 360),
     MinSize = Vector2.new(480, 360),
     DPIScale = 1,
-    CornerRadius = 12,
+    CornerRadius = 8,
 
     --// Scheme \\--
-    IsLightTheme = true,
+    IsLightTheme = false,
     Scheme = {
         BackgroundColor = Color3.fromRGB(16, 16, 16),
-        MainColor = Color3.fromRGB(42, 42, 44),
+        MainColor = Color3.fromRGB(26, 26, 26),
         AccentColor = Color3.fromRGB(0, 145, 255),
         ToggleColor = Color3.fromRGB(51, 199, 89),
-        OutlineColor = Color3.fromRGB(255, 255, 255),
-        FontColor = Color3.fromRGB(245, 245, 247),
+        OutlineColor = Color3.fromRGB(42, 42, 44),
+        FontColor = Color3.new(1, 1, 1),
         Font = Font.new("rbxassetid://12187365364", Enum.FontWeight.Medium),
 
-        RedColor = Color3.fromRGB(239, 68, 68),
+        RedColor = Color3.fromRGB(255, 50, 50),
         DestructiveColor = Color3.fromRGB(220, 38, 38),
-        DarkColor = Color3.fromRGB(0, 0, 0),
+        DarkColor = Color3.new(0, 0, 0),
         WhiteColor = Color3.new(1, 1, 1),
 
         BackgroundImage = ""
@@ -328,7 +328,6 @@ local Templates = {
         FontFace = "Font",
         RichText = true,
         TextColor3 = "FontColor",
-        TextSize = 14,
     },
     TextButton = {
         AutoButtonColor = false,
@@ -336,7 +335,6 @@ local Templates = {
         FontFace = "Font",
         RichText = true,
         TextColor3 = "FontColor",
-        TextSize = 14,
     },
     TextBox = {
         BorderSizePixel = 0,
@@ -347,7 +345,6 @@ local Templates = {
         end,
         Text = "",
         TextColor3 = "FontColor",
-        TextSize = 14,
     },
     UIListLayout = {
         SortOrder = Enum.SortOrder.LayoutOrder,
@@ -372,7 +369,7 @@ local Templates = {
         SearchbarSize = UDim2.fromScale(1, 1),
         GlobalSearch = false,
 
-        CornerRadius = 12,
+        CornerRadius = 8,
         NotifySide = "Right",
         ShowCustomCursor = true,
 
@@ -406,16 +403,16 @@ local Templates = {
 
         --// Animations \\--
         Animations = {
-            ToggleWindow = true,
-            TabSwitch = true,
-            Groupbox = true,
-            Dropdown = true,
-            KeyPicker = true
+            ToggleWindow = false,
+            TabSwitch = false,
+            Groupbox = false,
+            Dropdown = false,
+            KeyPicker = false
         },
 
-        TabTransitionTime = 0.18,
-        TabSwipeOffset = 18,
-        TabSwipeFrom = "right"
+        TabTransitionTime = 0.22,
+        TabSwipeOffset = 26,
+        TabSwipeFrom = "bottom"
     },
     Dialog = {
         Title = "Dialog",
@@ -3924,7 +3921,7 @@ do
 
         local Holder = New("TextButton", {
             BackgroundColor3 = ColorPicker.Value,
-            Size = UDim2.fromOffset(22, 22),
+            Size = UDim2.fromOffset(18, 18),
             Text = "",
             Parent = ToggleLabel,
         })
@@ -3935,10 +3932,10 @@ do
         })
 
         local ColorPickerCorner = New("UICorner", {
-            TopLeftRadius = UDim.new(0, 7),
-            TopRightRadius = UDim.new(0, 7),
-            BottomRightRadius = UDim.new(0, 7),
-            BottomLeftRadius = UDim.new(0, 7),
+            TopLeftRadius = UDim.new(0, Library.CornerRadius / 2),
+            TopRightRadius = UDim.new(0, Library.CornerRadius / 2),
+            BottomRightRadius = UDim.new(0, Library.CornerRadius / 2),
+            BottomLeftRadius = UDim.new(0, Library.CornerRadius / 2),
             Parent = Holder,
         }); table.insert(Library.SpecificCorners, ColorPickerCorner)
 
@@ -4202,13 +4199,9 @@ do
 
             ColorPicker.Value = Color3.fromHSV(ColorPicker.Hue, ColorPicker.Sat, ColorPicker.Vib)
 
-            -- Smoothly animate holder color and stroke to new value
-            pcall(function()
-                local TargetColor = ColorPicker.Value
-                TweenService:Create(Holder, Library.TweenInfo, { BackgroundColor3 = TargetColor }):Play()
-                TweenService:Create(HolderStroke, Library.TweenInfo, { Color = Library:GetDarkerColor(TargetColor) }):Play()
-                TweenService:Create(HolderTransparency, Library.TweenInfo, { ImageTransparency = (1 - ColorPicker.Transparency) }):Play()
-            end)
+            Holder.BackgroundColor3 = ColorPicker.Value
+            HolderStroke.Color = Library:GetDarkerColor(ColorPicker.Value)
+            HolderTransparency.ImageTransparency = (1 - ColorPicker.Transparency)
 
             SatVipMap.BackgroundColor3 = Color3.fromHSV(ColorPicker.Hue, 1, 1)
             if TransparencyColor then
@@ -5160,22 +5153,6 @@ do
             Parent = Checkbox,
         })
 
-        -- Hover animations for Checkbox row
-        table.insert(Toggle.Connections, Button.MouseEnter:Connect(function()
-            if Toggle.Disabled then return end
-            pcall(function()
-                TweenService:Create(Checkbox, Library.TweenInfo, { BackgroundTransparency = 0 }):Play()
-                TweenService:Create(CheckboxStroke, Library.TweenInfo, { Transparency = 0 }):Play()
-            end)
-        end))
-        table.insert(Toggle.Connections, Button.MouseLeave:Connect(function()
-            if Toggle.Disabled then return end
-            pcall(function()
-                TweenService:Create(Checkbox, Library.TweenInfo, { BackgroundTransparency = 0 }):Play()
-                TweenService:Create(CheckboxStroke, Library.TweenInfo, { Transparency = Toggle.Value and 1 or 0 }):Play()
-            end)
-        end))
-
         function Toggle:UpdateColors()
             Toggle:Display()
         end
@@ -5383,19 +5360,16 @@ do
 
         local Button = New("TextButton", {
             Active = not Toggle.Disabled,
-            BackgroundColor3 = "MainColor",
-            BackgroundTransparency = 0.35,
-            Size = UDim2.new(1, 0, 0, 34),
+            BackgroundTransparency = 1,
+            Size = UDim2.new(1, 0, 0, 18),
             Text = "",
             Visible = Toggle.Visible,
             Parent = Container,
         })
-        New("UICorner", { CornerRadius = UDim.new(0, 8), Parent = Button })
-        New("UIPadding", { PaddingLeft = UDim.new(0, 10), PaddingRight = UDim.new(0, 10), Parent = Button })
 
         local Label = New("TextLabel", {
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, -54, 1, 0),
+            Size = UDim2.new(1, -40, 1, 0),
             Text = Toggle.Text,
             TextSize = 14,
             TextTransparency = 0.4,
@@ -5414,11 +5388,11 @@ do
             AnchorPoint = Vector2.new(1, 0),
             BackgroundColor3 = "MainColor",
             Position = UDim2.fromScale(1, 0),
-            Size = UDim2.fromOffset(38, 22),
+            Size = UDim2.fromOffset(32, 18),
             Parent = Button,
         })
         New("UICorner", {
-            CornerRadius = UDim.new(0, 11),
+            CornerRadius = UDim.new(0, 7),
             Parent = Switch,
         })
         New("UIPadding", {
@@ -5440,25 +5414,9 @@ do
             Parent = Switch,
         })
         New("UICorner", {
-            CornerRadius = UDim.new(0, math.max(3, math.floor(Library.CornerRadius / 3))),
+            CornerRadius = UDim.new(0, 5),
             Parent = Ball,
         })
-
-        -- Hover animations for Switch
-        table.insert(Toggle.Connections, Switch.MouseEnter:Connect(function()
-            if Toggle.Disabled then return end
-            pcall(function()
-                TweenService:Create(Switch, Library.TweenInfo, { BackgroundTransparency = 0 }):Play()
-                TweenService:Create(SwitchStroke, Library.TweenInfo, { Transparency = Toggle.Value and 0 or 0.2 }):Play()
-            end)
-        end))
-        table.insert(Toggle.Connections, Switch.MouseLeave:Connect(function()
-            if Toggle.Disabled then return end
-            pcall(function()
-                TweenService:Create(Switch, Library.TweenInfo, { BackgroundTransparency = Toggle.Disabled and 0.75 or 0 }):Play()
-                TweenService:Create(SwitchStroke, Library.TweenInfo, { Transparency = Toggle.Value and 0 or 0 }):Play()
-            end)
-        end))
 
         function Toggle:UpdateColors()
             Toggle:Display()
@@ -5678,7 +5636,7 @@ do
 
         local Holder = New("Frame", {
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 0, 43),
+            Size = UDim2.new(1, 0, 0, 39),
             Visible = Input.Visible,
             Parent = Container,
         })
@@ -5698,7 +5656,7 @@ do
             ClearTextOnFocus = not Input.Disabled and Input.ClearTextOnFocus,
             PlaceholderText = Input.Placeholder,
             Position = UDim2.fromScale(0, 1),
-            Size = UDim2.new(1, 0, 0, 26),
+            Size = UDim2.new(1, 0, 0, 21),
             Text = Input.Value,
             TextEditable = not Input.Disabled,
             TextScaled = true,
@@ -5716,7 +5674,6 @@ do
 
         New("UIStroke", {
             Color = "OutlineColor",
-            Transparency = 0.72,
             Parent = Box,
         })
 
@@ -5905,7 +5862,7 @@ do
 
         local Holder = New("Frame", {
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 0, Info.Compact and 18 or 38),
+            Size = UDim2.new(1, 0, 0, Info.Compact and 15 or 33),
             Visible = Slider.Visible,
             Parent = Container,
         })
@@ -5927,14 +5884,13 @@ do
             AnchorPoint = Vector2.new(0, 1),
             BackgroundColor3 = "MainColor",
             Position = UDim2.fromScale(0, 1),
-            Size = UDim2.new(1, 0, 0, 18),
+            Size = UDim2.new(1, 0, 0, 15),
             Text = "",
             Parent = Holder,
         })
 
         New("UIStroke", {
             Color = "OutlineColor",
-            Transparency = 0.72,
             Parent = Bar,
         })
 
@@ -6341,7 +6297,7 @@ do
 
         local Holder = New("Frame", {
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 0, Dropdown.Text and 45 or 28),
+            Size = UDim2.new(1, 0, 0, Dropdown.Text and 39 or 21),
             Visible = Dropdown.Visible,
             Parent = Container,
         })
@@ -6497,22 +6453,6 @@ do
             "Dropdown"
         )
         Dropdown.Menu = MenuTable
-
-        -- Hover animations for Dropdown display
-        table.insert(Dropdown.Connections, DisplayContainer.MouseEnter:Connect(function()
-            if Dropdown.Disabled then return end
-            pcall(function()
-                TweenService:Create(DisplayContainer, Library.TweenInfo, { BackgroundTransparency = 0 }):Play()
-                TweenService:Create(ArrowImage, Library.TweenInfo, { ImageTransparency = 0.2 }):Play()
-            end)
-        end))
-        table.insert(Dropdown.Connections, DisplayContainer.MouseLeave:Connect(function()
-            if Dropdown.Disabled then return end
-            pcall(function()
-                TweenService:Create(DisplayContainer, Library.TweenInfo, { BackgroundTransparency = 0 }):Play()
-                TweenService:Create(ArrowImage, Library.TweenInfo, { ImageTransparency = Dropdown.Disabled and 0.8 or (MenuTable.Active and 0 or 0.5) }):Play()
-            end)
-        end))
 
         local ItemHeight = 21
         local PoolSize = math.max(1, Info.MaxVisibleDropdownItems + 2)
@@ -9611,38 +9551,26 @@ function Library:CreateWindow(WindowInfo)
             TabButton = New("TextButton", {
                 BackgroundColor3 = "MainColor",
                 BackgroundTransparency = 1,
-                Size = UDim2.new(1, -12, 0, 40),
-                Position = UDim2.fromOffset(6, 0),
+                Size = UDim2.new(1, 0, 0, 40),
                 Text = "",
                 LayoutOrder = Order,
                 Parent = Tabs,
             })
             local ButtonPadding = New("UIPadding", {
-                PaddingBottom = UDim.new(0, IsCompact and 7 or 9),
-                PaddingLeft = UDim.new(0, IsCompact and 7 or 11),
-                PaddingRight = UDim.new(0, IsCompact and 7 or 11),
-                PaddingTop = UDim.new(0, IsCompact and 7 or 9),
+                PaddingBottom = UDim.new(0, IsCompact and 6 or 11),
+                PaddingLeft = UDim.new(0, IsCompact and 6 or 12),
+                PaddingRight = UDim.new(0, IsCompact and 6 or 12),
+                PaddingTop = UDim.new(0, IsCompact and 6 or 11),
                 Parent = TabButton,
             })
-
-            New("UICorner", { CornerRadius = UDim.new(0, 8), Parent = TabButton })
-
-            local ActiveIndicator = New("Frame", {
-                BackgroundColor3 = "AccentColor",
-                BackgroundTransparency = 1,
-                Position = UDim2.new(0, 0, 0.5, -8),
-                Size = UDim2.fromOffset(3, 16),
-                Parent = TabButton,
-            })
-            New("UICorner", { CornerRadius = UDim.new(0, 2), Parent = ActiveIndicator })
 
             TabLabel = New("TextLabel", {
                 BackgroundTransparency = 1,
                 Position = UDim2.fromOffset(30, 0),
                 Size = UDim2.new(1, -30, 1, 0),
                 Text = Name,
-                TextSize = 15,
-                TextTransparency = 0.45,
+                TextSize = 16,
+                TextTransparency = 0.5,
                 TextXAlignment = Enum.TextXAlignment.Left,
                 Visible = not IsCompact,
                 Parent = TabButton,
@@ -9666,7 +9594,6 @@ function Library:CreateWindow(WindowInfo)
                 Label = TabLabel,
                 Padding = ButtonPadding,
                 Icon = TabIcon,
-                ActiveIndicator = ActiveIndicator,
             })
 
             --// Tab Canvas \\--
@@ -10060,7 +9987,7 @@ function Library:CreateWindow(WindowInfo)
                 local Button = New("TextButton", {
                     BackgroundColor3 = "MainColor",
                     BackgroundTransparency = 0,
-                    Size = UDim2.fromOffset(0, 40),
+                    Size = UDim2.fromOffset(0, 34),
                     Text = "",
                     Parent = TabboxButtons,
                 })
@@ -10078,14 +10005,14 @@ function Library:CreateWindow(WindowInfo)
                     AutomaticSize = Enum.AutomaticSize.X,
                     BackgroundTransparency = 1,
                     Position = UDim2.fromScale(0.5, 0.5),
-                    Size = UDim2.fromOffset(0, 18),
+                    Size = UDim2.fromOffset(0, 16),
                     Parent = Button,
                 })
                 New("UIListLayout", {
                     FillDirection = Enum.FillDirection.Horizontal,
                     HorizontalAlignment = Enum.HorizontalAlignment.Center,
                     VerticalAlignment = Enum.VerticalAlignment.Center,
-                    Padding = UDim.new(0, 6),
+                    Padding = UDim.new(0, 8),
                     Parent = ButtonContent,
                 })
 
@@ -10097,8 +10024,8 @@ function Library:CreateWindow(WindowInfo)
                         ImageColor3 = BoxIcon.Custom and "WhiteColor" or "AccentColor",
                         ImageRectOffset = BoxIcon.ImageRectOffset,
                         ImageRectSize = BoxIcon.ImageRectSize,
-                        ImageTransparency = 0.4,
-                            Size = IsNameEmpty and UDim2.fromOffset(16, 16) or UDim2.fromOffset(18, 18),
+                        ImageTransparency = 0.5,
+                        Size = IsNameEmpty and UDim2.fromOffset(16, 16) or UDim2.fromOffset(18, 18),
                         Parent = ButtonContent,
                     })
                 end
@@ -10108,10 +10035,10 @@ function Library:CreateWindow(WindowInfo)
                     ButtonLabel = New("TextLabel", {
                         AutomaticSize = Enum.AutomaticSize.X,
                         BackgroundTransparency = 1,
-                        Size = UDim2.fromOffset(0, 18),
+                        Size = UDim2.fromOffset(0, 16),
                         Text = Name,
-                        TextSize = 14,
-                        TextTransparency = 0.3,
+                        TextSize = 15,
+                        TextTransparency = 0.5,
                         Parent = ButtonContent,
                     })
                 end
@@ -10124,8 +10051,8 @@ function Library:CreateWindow(WindowInfo)
 
                 local Container = New("Frame", {
                     BackgroundTransparency = 1,
-                    Position = UDim2.fromOffset(0, 40),
-                    Size = UDim2.new(1, 0, 1, -40),
+                    Position = UDim2.fromOffset(0, 35),
+                    Size = UDim2.new(1, 0, 1, -35),
                     Visible = false,
                     Parent = TabboxHolder,
                 })
@@ -10325,14 +10252,14 @@ function Library:CreateWindow(WindowInfo)
 
             do
                 GroupboxHolder = New("Frame", {
-                    BackgroundColor3 = "MainColor",
+                    BackgroundColor3 = "BackgroundColor",
                     Size = UDim2.fromScale(1, 0),
                     Parent = BoxHolder,
                 })
                 table.insert(
                     Library.Corners,
                     New("UICorner", {
-                        CornerRadius = UDim.new(0, 10),
+                        CornerRadius = UDim.new(0, WindowInfo.CornerRadius),
                         Parent = GroupboxHolder,
                     })
                 )
@@ -10342,7 +10269,6 @@ function Library:CreateWindow(WindowInfo)
                     Position = UDim2.fromOffset(0, 34),
                     Size = UDim2.new(1, 0, 0, 1),
                 })
-                GroupboxLine.BackgroundTransparency = 0.72
 
                 local BoxIcon = Library:GetCustomIcon(Info.IconName)
                 if BoxIcon then
@@ -10613,11 +10539,9 @@ function Library:CreateWindow(WindowInfo)
                 Library.ActiveTab:Hide()
             end
 
-            TweenService:Create(TabButton, Library.TweenInfo, { BackgroundTransparency = 0.88 }):Play()
-            local Meta = Library.TabButtons[table.find(Library.Tabs, Tab)]
-            if Meta and Meta.ActiveIndicator then
-                TweenService:Create(Meta.ActiveIndicator, Library.TweenInfo, { BackgroundTransparency = 0.05 }):Play()
-            end
+            TweenService:Create(TabButton, Library.TweenInfo, {
+                BackgroundTransparency = 0,
+            }):Play()
             TweenService:Create(TabLabel, Library.TweenInfo, {
                 TextTransparency = 0,
             }):Play()
@@ -10642,11 +10566,9 @@ function Library:CreateWindow(WindowInfo)
         end
 
         function Tab:Hide()
-            TweenService:Create(TabButton, Library.TweenInfo, { BackgroundTransparency = 1 }):Play()
-            local Meta = Library.TabButtons[table.find(Library.Tabs, Tab)]
-            if Meta and Meta.ActiveIndicator then
-                TweenService:Create(Meta.ActiveIndicator, Library.TweenInfo, { BackgroundTransparency = 1 }):Play()
-            end
+            TweenService:Create(TabButton, Library.TweenInfo, {
+                BackgroundTransparency = 1,
+            }):Play()
 
             TweenService:Create(TabLabel, Library.TweenInfo, {
                 TextTransparency = 0.5,
