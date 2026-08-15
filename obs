@@ -8815,10 +8815,15 @@ local function CreateAcrylicBlur()
         return instance
     end)
 
-    local camera = cloneref(workspace.CurrentCamera)
+    local camera = workspace.CurrentCamera
+    if camera then
+        camera = cloneref(camera)
+    end
     local folder = Instance.new("Folder")
     folder.Name = "AcrylicBlur"
-    folder.Parent = camera
+    if camera then
+        folder.Parent = camera
+    end
 
     local function createAcrylic()
         local part = Instance.new("Part")
@@ -8859,22 +8864,26 @@ local function CreateAcrylicBlur()
 
         local function render()
             local cam = workspace.CurrentCamera
-            local cf = cam and cam.CFrame or CFrame.new()
+            if not cam then
+                return
+            end
+
+            local cf = cam.CFrame
             local tl = corners.topLeft
             local tr = corners.topRight
             local br = corners.bottomRight
 
             local bl = corners.topLeft + Vector2.new(0, (corners.bottomRight - corners.topLeft).Y)
-            local p1 = camera:ViewportPointToRay(tl.X, tl.Y, intensity).Origin
-            local p2 = camera:ViewportPointToRay(tr.X, tr.Y, intensity).Origin
-            local p3 = camera:ViewportPointToRay(Vector2.new(tl.X, corners.bottomRight.Y), intensity).Origin
-            local p4 = camera:ViewportPointToRay(corners.bottomRight, intensity).Origin
+            local p1 = cam:ViewportPointToRay(tl.X, tl.Y, intensity).Origin
+            local p2 = cam:ViewportPointToRay(tr.X, tr.Y, intensity).Origin
+            local p3 = cam:ViewportPointToRay(Vector2.new(tl.X, corners.bottomRight.Y), intensity).Origin
+            local p4 = cam:ViewportPointToRay(corners.bottomRight, intensity).Origin
 
             local sizeX = (p2 - p1).Magnitude
             local sizeY = (p4 - p2).Magnitude
 
             local center = (p1 + p3) / 2
-            local cf = CFrame.fromMatrix(center, cf.XVector, cf.YVector, cf.ZVector)
+            local newCf = CFrame.fromMatrix(center, cf.XVector, cf.YVector, cf.ZVector)
             -- Note: In a real implementation, this would update the part's CFrame and mesh scale
         end
 
@@ -8978,7 +8987,20 @@ local function CreateAcrylicBlur()
     }
 end
 
-local Acrylic = CreateAcrylicBlur()
+local AcrylicOk, Acrylic = pcall(CreateAcrylicBlur)
+if not AcrylicOk then
+    warn("Obsidian: Acrylic module failed to initialize, Acrylic window option will be disabled.", Acrylic)
+    Acrylic = {
+        CreateAcrylicPaint = function()
+            return {
+                Frame = Instance.new("Frame"),
+                SetVisibility = function() end,
+                AddParent = function() end,
+            }
+        end,
+    }
+end
+Library.Acrylic = Acrylic
 
 function Library:CreateWindow(WindowInfo)
     WindowInfo = Library:Validate(WindowInfo, Templates.Window)
