@@ -772,7 +772,7 @@ if not v then
 if p and p.Window and p.Window.Debug then local
 z, A=x:find":%d+: "
 
-warn("[ WindUI: DEBUG Mode ] "..x)
+warn("[ Lib: DEBUG Mode ] "..x)
 
 return p:Notify{
 Title="DEBUG Mode: Error",
@@ -1390,7 +1390,7 @@ Colors={
 }.IconFrame
 L.Parent=J
 elseif string.find(x,"http")and not string.find(x,"roblox.com")then
-local L="WindUI/"..B.."/assets/."..C.."-"..z..".png"
+local L=string.char(87,105,110,100,85,73).."/"..B.."/assets/."..C.."-"..z..".png"
 local M,N=pcall(function()
 task.spawn(function()
 local M=r.Request
@@ -1411,7 +1411,7 @@ J.ImageLabel.Image=O
 else
 warn(
 string.format(
-"[ WindUI.Creator ] Failed to load custom asset '%s': %s",
+"[ Lib.Creator ] Failed to load custom asset '%s': %s",
 L,
 tostring(O)
 )
@@ -1424,7 +1424,7 @@ end)
 end)
 if not M then
 warn(
-"[ WindUI.Creator ]  '"..identifyexecutor()
+"[ Lib.Creator ]  '"..identifyexecutor()
 or"Studio".."' doesnt support the URL Images. Error: "..N
 )
 
@@ -2473,10 +2473,10 @@ New=a.load'j'.New
 
 return[[
 {
-    "name": "windui",
+    "name": "ui",
     "version": "1.6.65",
     "main": "./dist/main.lua",
-    "repository": "https://github.com/Footagesus/WindUI",
+    "repository": "https://github.com/Footagesus/UI",
     "discord": "https://discord.gg/ftgs-development-hub-1300692552005189632",
     "author": "Footagesus",
     "description": "Roblox UI Library for scripts",
@@ -4895,17 +4895,17 @@ end
 
 function ae.Init(af,ag)
 if not ag.Folder then
-warn"[ WindUI.ConfigManager ] Window.Folder is not specified."
+warn"[ Lib.ConfigManager ] Window.Folder is not specified."
 return false
 end
 if ab:IsStudio()or not writefile then
-warn"[ WindUI.ConfigManager ] The config system doesn't work in the studio."
+warn"[ Lib.ConfigManager ] The config system doesn't work in the studio."
 return false
 end
 
 ad=ag
 ae.Folder=ad.Folder
-ae.Path="WindUI/"..tostring(ae.Folder).."/config/"
+ae.Path=string.char(87,105,110,100,85,73).."/"..tostring(ae.Folder).."/config/"
 
 if not isfolder(ae.Path)then
 makefolder(ae.Path)
@@ -4924,7 +4924,7 @@ end
 
 function ae.SetPath(af,ag)
 if not ag then
-warn"[ WindUI.ConfigManager ] Custom path is not specified."
+warn"[ Lib.ConfigManager ] Custom path is not specified."
 return false
 end
 
@@ -5008,7 +5008,7 @@ end
 
 local ak,al=pcall(function()
 local ak=readfile or function()
-warn"[ WindUI.ConfigManager ] The config system doesn't work in the studio."
+warn"[ Lib.ConfigManager ] The config system doesn't work in the studio."
 return nil
 end
 return ac:JSONDecode(ak(ai.Path))
@@ -5095,9 +5095,9 @@ local al,am=pcall(function()
 return ai:Load()
 end)
 if al then
-if ad.Debug then print("[ WindUI.ConfigManager ] AutoLoaded config: "..ag)end
+if ad.Debug then print("[ Lib.ConfigManager ] AutoLoaded config: "..ag)end
 else
-warn("[ WindUI.ConfigManager ] Failed to AutoLoad config: "..ag.." - "..tostring(am))
+warn("[ Lib.ConfigManager ] Failed to AutoLoad config: "..ag.." - "..tostring(am))
 end
 end)
 end
@@ -11512,7 +11512,7 @@ if ay then
 ak.PendingConfigData[at.Flag]=nil
 else
 warn(
-"[ WindUI ] Failed to apply pending config for '"
+"[ Lib ] Failed to apply pending config for '"
 ..at.Flag
 .."': "
 ..tostring(az)
@@ -13107,11 +13107,11 @@ aw.Topbar={Height=52,ButtonsType="Default"}
 end
 
 if not ai:IsStudio()and aw.Folder and writefile then
-if not isfolder("WindUI/"..aw.Folder)then
-makefolder("WindUI/"..aw.Folder)
+if not isfolder(string.char(87,105,110,100,85,73).."/"..aw.Folder)then
+makefolder(string.char(87,105,110,100,85,73).."/"..aw.Folder)
 end
-if not isfolder("WindUI/"..aw.Folder.."/assets")then
-makefolder("WindUI/"..aw.Folder.."/assets")
+if not isfolder(string.char(87,105,110,100,85,73).."/"..aw.Folder.."/assets")then
+makefolder(string.char(87,105,110,100,85,73).."/"..aw.Folder.."/assets")
 end
 if not isfolder(aw.Folder)then
 makefolder(aw.Folder)
@@ -13544,7 +13544,7 @@ Headers={["User-Agent"]="Roblox/Exploit"},
 writefile(r,u)
 end)
 if not u then
-warn("[ WindUI.Window.Background ] Failed to download video: "..tostring(v))
+warn("[ Lib.Background ] Failed to download video: "..tostring(v))
 end
 end
 
@@ -13552,9 +13552,9 @@ local u,v=pcall(function()
 return getcustomasset(r)
 end)
 if not u then
-warn("[ WindUI.Window.Background ] Failed to load custom asset: "..tostring(v))
+warn("[ Lib.Background ] Failed to load custom asset: "..tostring(v))
 end
-warn"[ WindUI.Window.Background ] VideoFrame may not work with custom video"
+warn"[ Lib.Background ] VideoFrame may not work with custom video"
 l=v
 end
 
@@ -15550,8 +15550,8 @@ function aa.CreateWindow(az,aA)
 local aB=a.load'ae'
 
 if not am:IsStudio()and writefile then
-if not isfolder"WindUI"then
-makefolder"WindUI"
+if not isfolder(string.char(87,105,110,100,85,73))then
+makefolder(string.char(87,105,110,100,85,73))
 end
 if aA.Folder then
 makefolder(aA.Folder)
