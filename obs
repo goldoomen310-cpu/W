@@ -5451,18 +5451,18 @@ do
             AnchorPoint = Vector2.new(1, 0),
             BackgroundColor3 = "ElevatedColor",
             Position = UDim2.fromScale(1, 0),
-            Size = UDim2.fromOffset(38, 22),
+            Size = UDim2.fromOffset(40, 24),
             Parent = Button,
         })
         New("UICorner", {
-            CornerRadius = UDim.new(0, 9),
+            CornerRadius = UDim.new(1, 0),
             Parent = Switch,
         })
         New("UIPadding", {
-            PaddingBottom = UDim.new(0, 2),
-            PaddingLeft = UDim.new(0, 2),
-            PaddingRight = UDim.new(0, 2),
-            PaddingTop = UDim.new(0, 2),
+            PaddingBottom = UDim.new(0, 3),
+            PaddingLeft = UDim.new(0, 3),
+            PaddingRight = UDim.new(0, 3),
+            PaddingTop = UDim.new(0, 3),
             Parent = Switch,
         })
         local SwitchStroke = New("UIStroke", {
@@ -5477,7 +5477,13 @@ do
             Parent = Switch,
         })
         New("UICorner", {
-            CornerRadius = UDim.new(0, math.max(3, math.floor(Library.CornerRadius / 3))),
+            CornerRadius = UDim.new(1, 0),
+            Parent = Ball,
+        })
+        New("UIStroke", {
+            Color = "DarkColor",
+            Thickness = 1,
+            Transparency = 0.75,
             Parent = Ball,
         })
 
@@ -5962,17 +5968,11 @@ do
         local Bar = New("TextButton", {
             Active = not Slider.Disabled,
             AnchorPoint = Vector2.new(0, 1),
-            BackgroundColor3 = "ElevatedColor",
+            BackgroundTransparency = 1,
             Position = UDim2.fromScale(0, 1),
             Size = UDim2.new(1, 0, 0, 18),
             Text = "",
             Parent = Holder,
-        })
-
-        New("UIStroke", {
-            Color = "OutlineColor",
-            Transparency = 0.72,
-            Parent = Bar,
         })
 
         local DisplayLabel = New("TextLabel", {
@@ -6010,19 +6010,41 @@ do
             })
         end
 
+        local Track = New("Frame", {
+            AnchorPoint = Vector2.new(0, 0.5),
+            BackgroundColor3 = "ElevatedColor",
+            Position = UDim2.fromScale(0, 0.5),
+            Size = UDim2.new(1, 0, 0, 8),
+            ZIndex = Bar.ZIndex,
+            Parent = Bar,
+        })
+        New("UICorner", {
+            CornerRadius = UDim.new(1, 0),
+            Parent = Track,
+        })
+        New("UIStroke", {
+            Color = "OutlineColor",
+            Transparency = 0.6,
+            Parent = Track,
+        })
+
         local Fill = New("Frame", {
             BackgroundColor3 = "AccentColor",
             Size = UDim2.fromScale(0.5, 1),
-            ZIndex = Bar.ZIndex + 1,
-            Parent = Bar,
+            ZIndex = Track.ZIndex + 1,
+            Parent = Track,
+        })
+        New("UICorner", {
+            CornerRadius = UDim.new(1, 0),
+            Parent = Fill,
         })
 
         local Knob = New("Frame", {
             AnchorPoint = Vector2.new(0.5, 0.5),
             BackgroundColor3 = "WhiteColor",
             Position = UDim2.fromScale(1, 0.5),
-            Size = UDim2.fromOffset(12, 12),
-            ZIndex = Bar.ZIndex + 2,
+            Size = UDim2.fromOffset(18, 18),
+            ZIndex = Track.ZIndex + 2,
             Parent = Fill,
         })
         New("UICorner", {
@@ -6035,22 +6057,6 @@ do
             Transparency = 0.4,
             Parent = Knob,
         })
-
-        table.insert(
-            Library.Corners,
-            New("UICorner", {
-                CornerRadius = UDim.new(0, 9),
-                Parent = Bar,
-            })
-        )
-
-        table.insert(
-            Library.Corners,
-            New("UICorner", {
-                CornerRadius = UDim.new(0, 9),
-                Parent = Fill,
-            })
-        )
 
         function Slider:UpdateColors()
             if Library.Unloaded then
@@ -9169,6 +9175,21 @@ function Library:CreateWindow(WindowInfo)
         end
 
         --// Top Bar \\-
+        local TopBarBackground = New("Frame", {
+            BackgroundColor3 = function()
+                return Library:GetBetterColor(Library.Scheme.BackgroundColor, 4)
+            end,
+            Size = UDim2.new(1, 0, 0, 48 + WindowInfo.CornerRadius),
+            Parent = MainFrame,
+        })
+        table.insert(
+            Library.Corners,
+            New("UICorner", {
+                CornerRadius = UDim.new(0, WindowInfo.CornerRadius),
+                Parent = TopBarBackground,
+            })
+        )
+
         TopBar = New("Frame", {
             BackgroundTransparency = 1,
             Size = UDim2.new(1, 0, 0, 48),
@@ -9431,6 +9452,13 @@ function Library:CreateWindow(WindowInfo)
             Parent = MainFrame,
         })
         New("UIListLayout", {
+            Padding = UDim.new(0, 3),
+            Parent = Tabs,
+        })
+
+        New("UIPadding", {
+            PaddingTop = UDim.new(0, 3),
+            PaddingBottom = UDim.new(0, 3),
             Parent = Tabs,
         })
 
@@ -9737,15 +9765,6 @@ function Library:CreateWindow(WindowInfo)
 
             New("UICorner", { CornerRadius = UDim.new(0, Library.CornerRadius), Parent = TabButton })
 
-            local ActiveIndicator = New("Frame", {
-                BackgroundColor3 = "AccentColor",
-                BackgroundTransparency = 1,
-                Position = UDim2.new(0, 0, 0.5, -8),
-                Size = UDim2.fromOffset(3, 16),
-                Parent = TabButton,
-            })
-            New("UICorner", { CornerRadius = UDim.new(0, 2), Parent = ActiveIndicator })
-
             TabLabel = New("TextLabel", {
                 BackgroundTransparency = 1,
                 Position = UDim2.fromOffset(30, 0),
@@ -9776,7 +9795,6 @@ function Library:CreateWindow(WindowInfo)
                 Label = TabLabel,
                 Padding = ButtonPadding,
                 Icon = TabIcon,
-                ActiveIndicator = ActiveIndicator,
             })
 
             --// Tab Canvas \\--
@@ -10724,10 +10742,6 @@ function Library:CreateWindow(WindowInfo)
             end
 
             TweenService:Create(TabButton, Library.TweenInfo, { BackgroundTransparency = 0.82 }):Play()
-            local Meta = Library.TabButtons[table.find(Library.Tabs, Tab)]
-            if Meta and Meta.ActiveIndicator then
-                TweenService:Create(Meta.ActiveIndicator, Library.TweenInfo, { BackgroundTransparency = 0.05 }):Play()
-            end
             TweenService:Create(TabLabel, Library.TweenInfo, {
                 TextTransparency = 0,
             }):Play()
@@ -10753,10 +10767,6 @@ function Library:CreateWindow(WindowInfo)
 
         function Tab:Hide()
             TweenService:Create(TabButton, Library.TweenInfo, { BackgroundTransparency = 1 }):Play()
-            local Meta = Library.TabButtons[table.find(Library.Tabs, Tab)]
-            if Meta and Meta.ActiveIndicator then
-                TweenService:Create(Meta.ActiveIndicator, Library.TweenInfo, { BackgroundTransparency = 1 }):Play()
-            end
 
             TweenService:Create(TabLabel, Library.TweenInfo, {
                 TextTransparency = 0.5,
@@ -10883,7 +10893,8 @@ function Library:CreateWindow(WindowInfo)
             TabButton = New("TextButton", {
                 BackgroundColor3 = "MainColor",
                 BackgroundTransparency = 1,
-                Size = UDim2.new(1, 0, 0, 40),
+                Size = UDim2.new(1, -12, 0, 40),
+                Position = UDim2.fromOffset(6, 0),
                 Text = "",
                 Parent = Tabs,
             })
@@ -10894,6 +10905,8 @@ function Library:CreateWindow(WindowInfo)
                 PaddingTop = UDim.new(0, IsCompact and 6 or 11),
                 Parent = TabButton,
             })
+
+            New("UICorner", { CornerRadius = UDim.new(0, Library.CornerRadius), Parent = TabButton })
 
             TabLabel = New("TextLabel", {
                 BackgroundTransparency = 1,
