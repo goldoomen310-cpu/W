@@ -5753,6 +5753,100 @@ do
             Toggle:SetValue(not Toggle.Value)
         end))
 
+        -- Right-click keybind on PC
+        if not Library.IsMobile then
+            Toggle.Keybind = nil
+            Toggle.KeybindConnection = nil
+            Toggle.IsPickingKeybind = false
+
+            local function StartKeybindPick()
+                if Toggle.Disabled or Toggle.IsPickingKeybind or Library.IsPicking then
+                    return
+                end
+
+                Toggle.IsPickingKeybind = true
+                Library.IsPicking = true
+
+                Library:Notify(string.format("Press a key to set a keybind for \"%s\"...", Toggle.Text), 5)
+
+                task.spawn(function()
+                    local Input = UserInputService.InputBegan:Wait()
+
+                    Toggle.IsPickingKeybind = false
+                    Library.IsPicking = false
+
+                    if Library.Unloaded or not Input then
+                        return
+                    end
+
+                    if Input.KeyCode == Enum.KeyCode.Escape then
+                        Library:Notify("Keybind cancelled.", 3)
+                        return
+                    end
+
+                    if not (Input.UserInputType == Enum.UserInputType.Keyboard or IsMouseClickInput(Input)) then
+                        Library:Notify("Keybind cancelled.", 3)
+                        return
+                    end
+
+                    local Key = ""
+                    if Input.UserInputType == Enum.UserInputType.Keyboard then
+                        Key = Input.KeyCode.Name
+                    elseif Input.UserInputType == Enum.UserInputType.MouseButton1 then
+                        Key = "Mouse1"
+                    elseif Input.UserInputType == Enum.UserInputType.MouseButton2 then
+                        Key = "Mouse2"
+                    elseif Input.UserInputType == Enum.UserInputType.MouseButton3 then
+                        Key = "Mouse3"
+                    end
+
+                    if Key == "" then
+                        Library:Notify("Keybind cancelled.", 3)
+                        return
+                    end
+
+                    Toggle.Keybind = Key
+
+                    if Toggle.KeybindConnection then
+                        Toggle.KeybindConnection:Disconnect()
+                    end
+
+                    Toggle.KeybindConnection = UserInputService.InputBegan:Connect(function(BindInput)
+                        if Library.Unloaded or Toggle.Destroyed then
+                            return
+                        end
+
+                        if Toggle.Disabled or UserInputService:GetFocusedTextBox() then
+                            return
+                        end
+
+                        local BindKey = ""
+                        if BindInput.UserInputType == Enum.UserInputType.Keyboard then
+                            BindKey = BindInput.KeyCode.Name
+                        elseif BindInput.UserInputType == Enum.UserInputType.MouseButton1 then
+                            BindKey = "Mouse1"
+                        elseif BindInput.UserInputType == Enum.UserInputType.MouseButton2 then
+                            BindKey = "Mouse2"
+                        elseif BindInput.UserInputType == Enum.UserInputType.MouseButton3 then
+                            BindKey = "Mouse3"
+                        end
+
+                        if BindKey == Toggle.Keybind then
+                            Toggle:SetValue(not Toggle.Value)
+                        end
+                    end)
+
+                    table.insert(Toggle.Connections, Toggle.KeybindConnection)
+
+                    Library:Notify(string.format("\"%s\" has keybind set to \"%s\"", Toggle.Text, Key), 4)
+                end)
+            end
+
+            table.insert(Toggle.Connections, Button.MouseButton2Click:Connect(function()
+                StartKeybindPick()
+            end))
+        end
+
         if typeof(Toggle.Tooltip) == "string" or typeof(Toggle.DisabledTooltip) == "string" then
             Toggle.TooltipTable = Library:AddTooltip(Toggle.Tooltip, Toggle.DisabledTooltip, Button)
             Toggle.TooltipTable.Disabled = Toggle.Disabled
@@ -6099,7 +6193,7 @@ do
 
         local Holder = New("Frame", {
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 0, Info.Compact and 18 or (HasDescription and 64 + LabelHeight or 48 + LabelHeight)),
+            Size = UDim2.new(1, 0, 0, Info.Compact and 18 or (HasDescription and 56 + LabelHeight or 38 + LabelHeight)),
             Visible = Slider.Visible,
             Parent = Container,
         })
@@ -6110,7 +6204,7 @@ do
             if IsLabelOutside then
                 SliderLabel = New("TextLabel", {
                     BackgroundTransparency = 1,
-                    Size = UDim2.new(1, 0, 0, 16),
+                    Size = UDim2.new(1, -70, 0, 16),
                     Text = Slider.Text,
                     TextSize = 14,
                     TextXAlignment = Enum.TextXAlignment.Left,
@@ -6120,7 +6214,7 @@ do
             else
                 SliderLabel = New("TextLabel", {
                     BackgroundTransparency = 1,
-                    Size = UDim2.new(1, 0, 0, 14),
+                    Size = UDim2.new(1, -70, 0, 14),
                     Text = Slider.Text,
                     TextSize = 14,
                     TextXAlignment = Enum.TextXAlignment.Left,
@@ -6143,29 +6237,26 @@ do
             end
         end
 
+        local DisplayLabel = New("TextLabel", {
+            BackgroundTransparency = 1,
+            Size = UDim2.new(0, 64, 0, 16),
+            Position = UDim2.new(1, -64, 0, 0),
+            Text = "",
+            TextSize = 14,
+            TextXAlignment = Enum.TextXAlignment.Right,
+            ZIndex = 4,
+            Visible = not Info.Compact,
+            Parent = Holder,
+        })
+
         local Bar = New("TextButton", {
             Active = not Slider.Disabled,
             AnchorPoint = Vector2.new(0, 1),
             BackgroundTransparency = 1,
             Position = UDim2.fromScale(0, 1),
-            Size = UDim2.new(1, 0, 0, Info.Compact and 18 or 26),
+            Size = UDim2.new(1, 0, 0, Info.Compact and 18 or 18),
             Text = "",
             Parent = Holder,
-        })
-
-        local DisplayLabel = New("TextLabel", {
-            BackgroundTransparency = 1,
-            Size = UDim2.fromScale(1, 1),
-            Text = "",
-            TextSize = 14,
-            ZIndex = Bar.ZIndex + 2,
-            Parent = Bar,
-        })
-        New("UIStroke", {
-            ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual,
-            Color = "DarkColor",
-            LineJoinMode = Enum.LineJoinMode.Miter,
-            Parent = DisplayLabel,
         })
 
         local InputTextBox
@@ -6192,7 +6283,7 @@ do
             AnchorPoint = Vector2.new(0, 0.5),
             BackgroundColor3 = "ElevatedColor",
             Position = UDim2.fromScale(0, 0.5),
-            Size = UDim2.new(1, 0, 0, Info.Compact and 6 or 22),
+            Size = UDim2.new(1, 0, 0, Info.Compact and 6 or 6),
             ZIndex = Bar.ZIndex,
             Parent = Bar,
         })
@@ -6221,7 +6312,7 @@ do
             AnchorPoint = Vector2.new(0.5, 0.5),
             BackgroundColor3 = "WhiteColor",
             Position = UDim2.fromScale(1, 0.5),
-            Size = UDim2.fromOffset(Info.Compact and 16 or 24, Info.Compact and 16 or 24),
+            Size = UDim2.fromOffset(Info.Compact and 14 or 18, Info.Compact and 14 or 18),
             ZIndex = Track.ZIndex + 2,
             Parent = Fill,
         })
@@ -6287,8 +6378,8 @@ do
 
             DisplayLabel.Text = ValueText
             DisplayLabel.TextXAlignment = Enum.TextXAlignment.Right
-            DisplayLabel.Size = UDim2.new(1, -34, 1, 0)
-            DisplayLabel.Position = UDim2.fromOffset(10, 0)
+            DisplayLabel.Size = UDim2.new(0, 64, 0, 16)
+            DisplayLabel.Position = UDim2.new(1, -64, 0, 0)
 
             local X = (Slider.Value - Slider.Min) / (Slider.Max - Slider.Min)
             Fill.Size = UDim2.fromScale(X, 1)
@@ -6478,7 +6569,7 @@ do
                 Library.ActiveLoading.Sidebar.Container.ScrollingEnabled = false
             end
 
-            TweenService:Create(Knob, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.fromOffset(Info.Compact and 20 or 28, Info.Compact and 20 or 28) }):Play()
+            TweenService:Create(Knob, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.fromOffset(Info.Compact and 18 or 22, Info.Compact and 18 or 22) }):Play()
 
             while IsDragInput(Input) and not Slider.Destroyed do
                 local Location = Mouse.X
@@ -6495,7 +6586,7 @@ do
                 RunService.RenderStepped:Wait()
             end
 
-            TweenService:Create(Knob, Library.TweenInfo, { Size = UDim2.fromOffset(Info.Compact and 16 or 24, Info.Compact and 16 or 24) }):Play()
+            TweenService:Create(Knob, Library.TweenInfo, { Size = UDim2.fromOffset(Info.Compact and 14 or 18, Info.Compact and 14 or 18) }):Play()
 
             if Library.ActiveTab then
                 for _, Side in Library.ActiveTab.Sides do
@@ -7143,25 +7234,10 @@ do
                 Parent = Button,
             })
 
-            local CheckImage = New("ImageLabel", {
-                AnchorPoint = Vector2.new(1, 0.5),
-                BackgroundTransparency = 1,
-                Image = CheckIcon and CheckIcon.Url or "",
-                ImageColor3 = "FontColor",
-                ImageRectOffset = CheckIcon and CheckIcon.ImageRectOffset or Vector2.zero,
-                ImageRectSize = CheckIcon and CheckIcon.ImageRectSize or Vector2.zero,
-                ImageTransparency = 1,
-                Position = UDim2.fromScale(1, 0.5),
-                Size = UDim2.fromOffset(14, 14),
-                ZIndex = Container.ZIndex + 1,
-                Parent = Container,
-            })
-
             Row.Container = Container
             Row.Corner = Corner
             Row.Image = Image
             Row.Button = Button
-            Row.CheckImage = CheckImage
 
             function Row:UpdateButton()
                 local Entry = Row.Entry
@@ -7176,14 +7252,10 @@ do
                     Selected = Dropdown.Value == Entry.Value
                 end
 
-                Container.BackgroundColor3 = Selected and Library.Scheme.AccentColor or Container.BackgroundColor3
-                Container.BackgroundTransparency = Selected and 0.82 or 1
-                Button.TextTransparency = Entry.IsDisabled and 0.8 or Selected and 0 or 0.5
-
-                local CheckTarget = (Selected and not Entry.IsDisabled) and 0 or 1
-                if CheckImage.ImageTransparency ~= CheckTarget then
-                    TweenService:Create(CheckImage, Library.TweenInfo, { ImageTransparency = CheckTarget }):Play()
-                end
+                Container.BackgroundColor3 = Selected and Library.Scheme.ElevatedColor or Container.BackgroundColor3
+                Container.BackgroundTransparency = Selected and 0.85 or 1
+                Button.TextTransparency = Entry.IsDisabled and 0.8 or Selected and 0.1 or 0.5
+                Button.Font = Entry.IsDisabled and Button.Font or (Selected and Enum.Font.SourceSansBold or Enum.Font.SourceSans)
 
                 if Entry.ValueImage then
                     Image.ImageTransparency = Entry.IsDisabled and 0.8 or Selected and 0 or 0.5
@@ -7202,7 +7274,7 @@ do
                 end
 
                 if not Selected then
-                    TweenService:Create(Container, Library.TweenInfo, { BackgroundTransparency = 0.92, BackgroundColor3 = Library.Scheme.ElevatedColor }):Play()
+                    TweenService:Create(Container, Library.TweenInfo, { BackgroundTransparency = 0.9, BackgroundColor3 = Library:GetBetterColor(Library.Scheme.ElevatedColor, 6) }):Play()
                 end
             end)
             Button.MouseLeave:Connect(function()
@@ -7217,7 +7289,7 @@ do
                 end
 
                 if not Selected then
-                    TweenService:Create(Container, Library.TweenInfo, { BackgroundTransparency = 1, BackgroundColor3 = Library.Scheme.AccentColor }):Play()
+                    TweenService:Create(Container, Library.TweenInfo, { BackgroundTransparency = 1, BackgroundColor3 = Library.Scheme.ElevatedColor }):Play()
                 end
             end)
             Button.MouseButton1Down:Connect(function()
