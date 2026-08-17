@@ -6982,7 +6982,7 @@ do
 
         local Holder = New("Frame", {
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 0, Dropdown.Text and 45 or 28),
+            Size = UDim2.new(1, 0, 0, Dropdown.Text and (Library.IsMobile and 55 or 45) or (Library.IsMobile and 40 or 28)),
             Visible = Dropdown.Visible,
             Parent = Container,
         })
@@ -7000,9 +7000,9 @@ do
 
         local DisplayContainer = New("TextButton", {
             AnchorPoint = Vector2.new(0, 1),
-            BackgroundColor3 = "MainColor",
+            BackgroundColor3 = "ElevatedColor",
             Position = UDim2.fromScale(0, 1),
-            Size = UDim2.new(1, 0, 0, 21),
+            Size = UDim2.new(1, 0, 0, Library.IsMobile and 36 or 21),
             Text = "",
             TextTransparency = 1,
             ZIndex = 2,
@@ -7021,10 +7021,10 @@ do
         })
 
         local DropdownCorner = New("UICorner", {
-            TopLeftRadius = UDim.new(0, Library.CornerRadius / 2),
-            TopRightRadius = UDim.new(0, Library.CornerRadius / 2),
-            BottomRightRadius = UDim.new(0, Library.CornerRadius / 2),
-            BottomLeftRadius = UDim.new(0, Library.CornerRadius / 2),
+            TopLeftRadius = UDim.new(0, Library.CornerRadius),
+            TopRightRadius = UDim.new(0, Library.CornerRadius),
+            BottomRightRadius = UDim.new(0, Library.CornerRadius),
+            BottomLeftRadius = UDim.new(0, Library.CornerRadius),
             Parent = DisplayContainer,
         }); table.insert(Library.SpecificCorners, DropdownCorner)
 
@@ -7116,7 +7116,7 @@ do
                 return UDim2.fromOffset((DisplayContainer.AbsoluteSize.X / Library.DPIScale), 0)
             end,
             function()
-                return { 0.5, DisplayContainer.AbsoluteSize.Y + 1.5 }
+                return { 0, DisplayContainer.AbsoluteSize.Y + 6 }
             end,
             2,
             function(Active: boolean)
@@ -7130,8 +7130,8 @@ do
                     SearchBox.Visible = Active
                 end
 
-                DropdownCorner.BottomRightRadius = Active and UDim.new(0, 0) or UDim.new(0, Library.CornerRadius / 2)
-                DropdownCorner.BottomLeftRadius = Active and UDim.new(0, 0) or UDim.new(0, Library.CornerRadius / 2)
+                DropdownCorner.BottomRightRadius = Active and UDim.new(0, 0) or UDim.new(0, Library.CornerRadius)
+                DropdownCorner.BottomLeftRadius = Active and UDim.new(0, 0) or UDim.new(0, Library.CornerRadius)
             end,
             false,
             "bottom",
@@ -7143,31 +7143,49 @@ do
         table.insert(Dropdown.Connections, DisplayContainer.MouseEnter:Connect(function()
             if Dropdown.Disabled then return end
             pcall(function()
-                TweenService:Create(DisplayContainer, Library.TweenInfo, { BackgroundTransparency = 0 }):Play()
-                TweenService:Create(ArrowImage, Library.TweenInfo, { ImageTransparency = 0.2 }):Play()
+                TweenService:Create(DisplayContainer, Library.TweenInfo, { BackgroundTransparency = 0, BackgroundColor3 = Library:GetBetterColor(Library.Scheme.ElevatedColor, 8) }):Play()
+                TweenService:Create(ArrowImage, Library.TweenInfo, { ImageTransparency = 0 }):Play()
             end)
         end))
         table.insert(Dropdown.Connections, DisplayContainer.MouseLeave:Connect(function()
             if Dropdown.Disabled then return end
             pcall(function()
-                TweenService:Create(DisplayContainer, Library.TweenInfo, { BackgroundTransparency = 0 }):Play()
+                TweenService:Create(DisplayContainer, Library.TweenInfo, { BackgroundTransparency = 0, BackgroundColor3 = Library.Scheme.ElevatedColor }):Play()
                 TweenService:Create(ArrowImage, Library.TweenInfo, { ImageTransparency = Dropdown.Disabled and 0.8 or (MenuTable.Active and 0 or 0.5) }):Play()
             end)
         end))
+        table.insert(Dropdown.Connections, DisplayContainer.MouseButton1Down:Connect(function()
+            if Dropdown.Disabled then return end
+            pcall(function()
+                TweenService:Create(DisplayContainer, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 0.2 }):Play()
+            end)
+        end))
+        table.insert(Dropdown.Connections, DisplayContainer.MouseButton1Up:Connect(function()
+            if Dropdown.Disabled then return end
+            pcall(function()
+                TweenService:Create(DisplayContainer, Library.TweenInfo, { BackgroundTransparency = 0 }):Play()
+            end)
+        end))
 
-        local ItemHeight = 21
+        local ItemHeight = Library.IsMobile and 44 or 36
         local PoolSize = math.max(1, Info.MaxVisibleDropdownItems + 2)
         local Pool = {}
         local FilteredEntries = {}
 
         function Dropdown:RecalculateListSize(Count)
             local ItemCount = Count or #FilteredEntries
-            local Y = math.clamp(ItemCount * ItemHeight, 0, Info.MaxVisibleDropdownItems * ItemHeight)
+            local Padding = 16
+            local MaxHeight = (Info.MaxVisibleDropdownItems * ItemHeight) + Padding
+            local Y = math.clamp((ItemCount * ItemHeight) + Padding, 0, MaxHeight)
 
-            MenuTable.Menu.CanvasSize = UDim2.fromOffset(0, ItemCount * ItemHeight)
+            MenuTable.Menu.CanvasSize = UDim2.fromOffset(0, (ItemCount * ItemHeight) + Padding)
 
             MenuTable:SetSize(function()
-                return UDim2.fromOffset((DisplayContainer.AbsoluteSize.X / Library.DPIScale), Y)
+                local Width = math.max(
+                    170,
+                    DisplayContainer.AbsoluteSize.X / Library.DPIScale
+                )
+                return UDim2.fromOffset(Width, Y)
             end)
         end
 
@@ -7353,11 +7371,7 @@ do
                 end
 
                 Row.Container.Visible = true
-                Row.Container.Position = UDim2.fromOffset(0, (DataIndex - 1) * ItemHeight)
-
-                local IsLast = DataIndex == Total
-                Row.Corner.BottomRightRadius = IsLast and UDim.new(0, Library.CornerRadius / 2) or UDim.new(0, 0)
-                Row.Corner.BottomLeftRadius = IsLast and UDim.new(0, Library.CornerRadius / 2) or UDim.new(0, 0)
+                Row.Container.Position = UDim2.fromOffset(6, (DataIndex - 1) * ItemHeight + 2)
 
                 Row.Button.Text = Entry.FormattedValue
 
@@ -7478,7 +7492,7 @@ do
             }
 
             local Container = New("Frame", {
-                BackgroundColor3 = "MainColor",
+                BackgroundColor3 = "AccentColor",
                 BackgroundTransparency = 1,
                 Size = UDim2.new(1, 0, 0, ItemHeight),
                 Visible = false,
@@ -7486,41 +7500,53 @@ do
             })
 
             local Corner = New("UICorner", {
-                TopLeftRadius = UDim.new(0, 0),
-                TopRightRadius = UDim.new(0, 0),
-                BottomRightRadius = UDim.new(0, 0),
-                BottomLeftRadius = UDim.new(0, 0),
+                CornerRadius = UDim.new(0, 7),
                 Parent = Container,
-            }); table.insert(Library.SpecificCorners, Corner)
+            }); table.insert(Library.Corners, Corner)
 
             local Image = New("ImageLabel", {
                 BackgroundTransparency = 1,
                 Image = "",
                 ImageTransparency = 0.5,
                 Size = UDim2.fromOffset(16, 16),
-                Position = UDim2.fromOffset(4, 3),
+                Position = UDim2.fromOffset(7, (ItemHeight - 16) / 2),
                 Visible = false,
+                Parent = Container,
+            })
+
+            local SelectionIndicator = New("ImageLabel", {
+                AnchorPoint = Vector2.new(1, 0.5),
+                BackgroundTransparency = 1,
+                Image = CustomImageManager.GetAsset("CheckIcon"),
+                ImageColor3 = "AccentColor",
+                ImageTransparency = 1,
+                Position = UDim2.new(1, -9, 0.5, 0),
+                Size = UDim2.fromOffset(14, 14),
+                ZIndex = 3,
                 Parent = Container,
             })
 
             local Button = New("TextButton", {
                 BackgroundTransparency = 1,
-                Size = UDim2.new(1, 0, 0, ItemHeight),
+                Size = UDim2.fromScale(1, 1),
                 Text = "",
                 TextSize = 14,
                 TextTransparency = 0.5,
+                TextWrapped = true,
                 TextXAlignment = Enum.TextXAlignment.Left,
+                TextYAlignment = Enum.TextYAlignment.Center,
                 Parent = Container,
             })
             New("UIPadding", {
-                PaddingLeft = UDim.new(0, 7),
-                PaddingRight = UDim.new(0, 7),
+                PaddingLeft = UDim.new(0, 10),
+                PaddingRight = UDim.new(0, 34),
                 Parent = Button,
             })
 
             Row.Container = Container
             Row.Corner = Corner
             Row.Image = Image
+            Row.SelectionIndicator = SelectionIndicator
             Row.Button = Button
 
             function Row:UpdateButton()
@@ -7536,14 +7562,65 @@ do
                     Selected = Dropdown.Value == Entry.Value
                 end
 
-                Container.BackgroundTransparency = Selected and 0 or 1
-                Button.TextTransparency = Entry.IsDisabled and 0.8 or Selected and 0 or 0.5
+                Container.BackgroundColor3 = Selected
+                    and Library:GetBetterColor(Library.Scheme.AccentColor, -2)
+                    or Library.Scheme.ElevatedColor
+                Container.BackgroundTransparency = Selected and 0.82 or 1
+                Button.TextTransparency = Entry.IsDisabled and 0.72 or Selected and 0 or 0.22
+                Button.Font = Entry.IsDisabled and Enum.Font.SourceSans or (Selected and Enum.Font.SourceSansSemibold or Enum.Font.SourceSans)
+                TweenService:Create(Container, Library.TweenInfo, {
+                    BackgroundTransparency = Selected and 0.82 or 1,
+                }):Play()
+                TweenService:Create(SelectionIndicator, Library.TweenInfo, {
+                    ImageTransparency = Selected and 0 or 1,
+                    Size = Selected and UDim2.fromOffset(16, 16) or UDim2.fromOffset(14, 14),
+                }):Play()
 
                 if Entry.ValueImage then
                     Image.ImageTransparency = Entry.IsDisabled and 0.8 or Selected and 0 or 0.5
                 end
             end
 
+            Button.MouseEnter:Connect(function()
+                local Entry = Row.Entry
+                if not Entry or Entry.IsDisabled then return end
+
+                local Selected
+                if Info.Multi then
+                    Selected = Dropdown.Value[Entry.Value]
+                else
+                    Selected = Dropdown.Value == Entry.Value
+                end
+
+                if not Selected then
+                    TweenService:Create(Container, Library.TweenInfo, {
+                        BackgroundTransparency = 0.9,
+                        BackgroundColor3 = Library:GetBetterColor(Library.Scheme.ElevatedColor, 8),
+                    }):Play()
+                    TweenService:Create(Button, Library.TweenInfo, { TextTransparency = 0.04 }):Play()
+                end
+            end)
+            Button.MouseLeave:Connect(function()
+                local Entry = Row.Entry
+                if not Entry then return end
+
+                local Selected
+                if Info.Multi then
+                    Selected = Dropdown.Value[Entry.Value]
+                else
+                    Selected = Dropdown.Value == Entry.Value
+                end
+
+                if not Selected then
+                    TweenService:Create(Container, Library.TweenInfo, {
+                        BackgroundTransparency = 1,
+                        BackgroundColor3 = Library.Scheme.ElevatedColor,
+                    }):Play()
+                    TweenService:Create(Button, Library.TweenInfo, {
+                        TextTransparency = Entry.IsDisabled and 0.72 or 0.22,
+                    }):Play()
+                end
+            end)
             Button.MouseButton1Click:Connect(function()
                 local Entry = Row.Entry
                 if not Entry or Entry.IsDisabled or DragSelecting then
@@ -10412,7 +10489,7 @@ function Library:CreateWindow(WindowInfo)
         -- Only mobile needs a dedicated minimized state because it gets a
         -- floating restore button. On desktop minimize is simply the normal
         -- visibility toggle, matching the requested behavior.
-        WindowState.IsMinimized = true
+        WindowState.IsMinimized = Library.IsMobile
         WindowState.IsMaximized = false
 
         -- Minimize should behave like WindUI: the entire window disappears.
@@ -10421,18 +10498,7 @@ function Library:CreateWindow(WindowInfo)
         Library:Toggle(false)
 
         if MobileRestoreButton then
-            MobileRestoreButton.Visible = Library.IsMobile
-        end
-
-        if Library.Notify then
-            task.defer(function()
-                Library:Notify({
-                    Title = "Minimized",
-                    Description = "Minimized: press Right Shift to show",
-                    Time = 4,
-                    Icon = "minimize-2",
-                })
-            end)
+            MobileRestoreButton.Visible = true
         end
 
         UpdateWindowControls()
@@ -12839,11 +12905,6 @@ function Library:CreateWindow(WindowInfo)
         end
 
         if UserInputService:GetFocusedTextBox() then
-            return
-        end
-
-        if Input.KeyCode == Enum.KeyCode.RightShift and WindowState.IsMinimized then
-            Window:Restore()
             return
         end
 
