@@ -6490,22 +6490,73 @@ do
         })
 
         -- Reflow slider title/value/description so long text grows downward instead of overlapping.
+        local SliderLayoutRefreshing = false
         local function RefreshSliderLayout(ValueText: string?)
-            if Info.Compact or not Holder.Parent then
+            if Info.Compact or not Holder.Parent or SliderLayoutRefreshing then
                 return
             end
 
+            SliderLayoutRefreshing = true
+
             local ContentWidth = math.max(120, Holder.AbsoluteSize.X / Library.DPIScale)
             local RawValueText = tostring(ValueText or DisplayLabel.Text or "")
-            local ValueTextBounds = Library:GetTextBounds(RawValueText, DisplayLabel.FontFace, DisplayLabel.TextSize, math.max(2048, ContentWidth * 2))
-            local ValueWidth = math.clamp(math.ceil(ValueTextBounds.X) + 10, 64, math.max(64, ContentWidth * 0.45))
-            local LabelWidth = math.max(40, ContentWidth - ValueWidth - 8)
 
-            local TitleHeight = GetWrappedTextHeight(Slider.Text, SliderLabel, LabelWidth, 16)
-            local ValueHeight = GetWrappedTextHeight(RawValueText, DisplayLabel, ValueWidth, 16)
-            local HeaderHeight = math.max(TitleHeight, ValueHeight)
+            -- GetTextBounds returns X/Y numbers, not a Vector2.
+            local ValueTextWidth = 0
+            do
+                local MeasuredWidth = Library:GetTextBounds(
+                    RawValueText,
+                    DisplayLabel.FontFace,
+                    DisplayLabel.TextSize,
+                    math.max(2048, ContentWidth * 2)
+                )
+                ValueTextWidth = MeasuredWidth
+            end
+
+            -- Keep the normal title/value side-by-side when the value fits.
+            -- If it does not, move the value to its own line instead of squeezing
+            -- it into a tiny column and producing ugly multi-line fragments.
+            local MaxInlineValueWidth = math.max(72, ContentWidth * 0.46)
+            local ValueOnOwnLine = ValueTextWidth + 12 > MaxInlineValueWidth
+
+            local LabelWidth
+            local ValueWidth
+            local TitleHeight
+            local ValueHeight
+            local HeaderHeight
+
+            if ValueOnOwnLine then
+                LabelWidth = ContentWidth
+                ValueWidth = ContentWidth
+
+                TitleHeight = GetWrappedTextHeight(Slider.Text, SliderLabel, LabelWidth, 16)
+                ValueHeight = GetWrappedTextHeight(RawValueText, DisplayLabel, ValueWidth, 16)
+                HeaderHeight = TitleHeight + 2 + ValueHeight
+
+                SliderLabel.Size = UDim2.new(1, 0, 0, TitleHeight)
+                SliderLabel.Position = UDim2.fromOffset(0, 0)
+
+                DisplayLabel.Size = UDim2.new(1, 0, 0, ValueHeight)
+                DisplayLabel.Position = UDim2.fromOffset(0, TitleHeight + 2)
+                DisplayLabel.TextWrapped = true
+            else
+                ValueWidth = math.max(72, math.ceil(ValueTextWidth) + 10)
+                ValueWidth = math.min(ValueWidth, MaxInlineValueWidth)
+                LabelWidth = math.max(40, ContentWidth - ValueWidth - 8)
+
+                TitleHeight = GetWrappedTextHeight(Slider.Text, SliderLabel, LabelWidth, 16)
+                ValueHeight = GetWrappedTextHeight(RawValueText, DisplayLabel, ValueWidth, 16)
+                HeaderHeight = math.max(TitleHeight, ValueHeight)
+
+                SliderLabel.Size = UDim2.new(0, LabelWidth, 0, TitleHeight)
+                SliderLabel.Position = UDim2.fromOffset(0, 0)
+
+                DisplayLabel.Size = UDim2.new(0, ValueWidth, 0, ValueHeight)
+                DisplayLabel.Position = UDim2.new(1, -ValueWidth, 0, 0)
+                DisplayLabel.TextWrapped = ValueHeight > 16
+            end
+
             local DescriptionHeight = 0
-
             if DescriptionLabel then
                 DescriptionHeight = GetWrappedTextHeight(DescriptionLabel.Text, DescriptionLabel, ContentWidth, 14)
             end
@@ -6516,12 +6567,6 @@ do
             TotalHeight = math.max(TotalHeight, IsLabelOutside and 40 or 38)
 
             Holder.Size = UDim2.new(1, 0, 0, TotalHeight)
-            SliderLabel.Size = UDim2.new(0, LabelWidth, 0, TitleHeight)
-            SliderLabel.Position = UDim2.fromOffset(0, 0)
-
-            DisplayLabel.Size = UDim2.new(0, ValueWidth, 0, ValueHeight)
-            DisplayLabel.Position = UDim2.new(1, -ValueWidth, 0, 0)
-            DisplayLabel.TextWrapped = ValueWidth < ValueTextBounds.X
 
             if InputTextBox then
                 InputTextBox.Size = DisplayLabel.Size
@@ -6535,6 +6580,8 @@ do
 
             Bar.Position = UDim2.new(0, 0, 1, 0)
             Groupbox:Resize()
+
+            SliderLayoutRefreshing = false
         end
 
         function Slider:UpdateColors()
