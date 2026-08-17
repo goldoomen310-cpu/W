@@ -294,7 +294,7 @@ local Library = {
 if RunService:IsStudio() then
     if UserInputService.TouchEnabled and not UserInputService.MouseEnabled then
         Library.IsMobile = true
-        Library.OriginalMinSize = Vector2.new(480, 240)
+        Library.OriginalMinSize = Vector2.new(360, 220)
     else
         Library.IsMobile = false
         Library.OriginalMinSize = Vector2.new(480, 360)
@@ -305,7 +305,15 @@ else
     end)
 
     Library.IsMobile = (Library.DevicePlatform == Enum.Platform.Android or Library.DevicePlatform == Enum.Platform.IOS)
-    Library.OriginalMinSize = Library.IsMobile and Vector2.new(480, 240) or Vector2.new(480, 360)
+    Library.OriginalMinSize = Library.IsMobile and Vector2.new(360, 220) or Vector2.new(480, 360)
+end
+
+-- Mobile-specific settings
+Library.MobileCompactMode = false
+if Library.IsMobile then
+    Library.MobileCompactMode = true
+    Library.CornerRadius = 8
+    Library.TweenInfo = TweenInfo.new(0.15, Enum.EasingStyle.Quint, Enum.EasingDirection.Out)
 end
 
 local Templates = {
@@ -416,7 +424,13 @@ local Templates = {
 
         TabTransitionTime = 0.18,
         TabSwipeOffset = 18,
-        TabSwipeFrom = "right"
+        TabSwipeFrom = "right",
+
+        --// Mobile Settings \\--
+        MobileSidebarWidth = 200,
+        MobileCompactSidebar = true,
+        MobileShowWindowControls = true,
+        MobileAutoCompact = true,
     },
     Dialog = {
         Title = "Dialog",
@@ -491,7 +505,8 @@ local Templates = {
         Disabled = false,
         Visible = true,
 
-        AllowRightClickInput = true
+        AllowRightClickInput = true,
+        LabelOutside = false,
     },
     Dropdown = {
         Values = {},
@@ -501,6 +516,10 @@ local Templates = {
         Multi = false,
         DragSelect = false,
         MaxVisibleDropdownItems = 8,
+        Searchable = false,
+        AllowNull = false,
+        Compact = false,
+        CloseOnSelect = true,
 
         Callback = function() end,
         Changed = function() end,
@@ -2894,6 +2913,10 @@ local ArrowIcon = Library:GetIcon("chevron-up")
 local ResizeIcon = Library:GetIcon("move-diagonal-2")
 local KeyIcon = Library:GetIcon("key")
 local MoveIcon = Library:GetIcon("move")
+local MinimizeIcon = Library:GetIcon("minimize-2")
+local MaximizeIcon = Library:GetIcon("maximize-2")
+local CloseIcon = Library:GetIcon("x")
+local RestoreIcon = Library:GetIcon("maximize-2")
 
 function Library:SetIconModule(module: IconModule)
     FetchIcons = true
@@ -2905,6 +2928,10 @@ function Library:SetIconModule(module: IconModule)
     ResizeIcon = Library:GetIcon("move-diagonal-2")
     KeyIcon = Library:GetIcon("key")
     MoveIcon = Library:GetIcon("move")
+    MinimizeIcon = Library:GetIcon("minimize-2")
+    MaximizeIcon = Library:GetIcon("maximize-2")
+    CloseIcon = Library:GetIcon("x")
+    RestoreIcon = Library:GetIcon("maximize-2")
 end
 
 local BaseAddons = {}
@@ -5966,6 +5993,7 @@ do
             Compact = Info.Compact,
             Rounding = Info.Rounding,
             HideMax = Info.HideMax,
+            LabelOutside = Info.LabelOutside,
 
             Tooltip = Info.Tooltip,
             DisabledTooltip = Info.DisabledTooltip,
@@ -5983,29 +6011,44 @@ do
         }
 
         local HasDescription = not Info.Compact and Info.Description ~= nil and Info.Description ~= ""
+        local IsLabelOutside = Info.LabelOutside == true or (Library.IsMobile and Info.LabelOutside ~= false)
+        local LabelHeight = IsLabelOutside and 18 or 0
 
         local Holder = New("Frame", {
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 0, Info.Compact and 18 or (HasDescription and 56 or 38)),
+            Size = UDim2.new(1, 0, 0, Info.Compact and 18 or (HasDescription and 56 + LabelHeight or 38 + LabelHeight)),
             Visible = Slider.Visible,
             Parent = Container,
         })
 
         local SliderLabel
+        local BarYOffset = 0
         if not Info.Compact then
-            SliderLabel = New("TextLabel", {
-                BackgroundTransparency = 1,
-                Size = UDim2.new(1, 0, 0, 14),
-                Text = Slider.Text,
-                TextSize = 14,
-                TextXAlignment = Enum.TextXAlignment.Left,
-                Parent = Holder,
-            })
+            if IsLabelOutside then
+                SliderLabel = New("TextLabel", {
+                    BackgroundTransparency = 1,
+                    Size = UDim2.new(1, 0, 0, 16),
+                    Text = Slider.Text,
+                    TextSize = 14,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    Parent = Holder,
+                })
+                BarYOffset = 18
+            else
+                SliderLabel = New("TextLabel", {
+                    BackgroundTransparency = 1,
+                    Size = UDim2.new(1, 0, 0, 14),
+                    Text = Slider.Text,
+                    TextSize = 14,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    Parent = Holder,
+                })
+            end
 
             if HasDescription then
                 New("TextLabel", {
                     BackgroundTransparency = 1,
-                    Position = UDim2.fromOffset(0, 16),
+                    Position = UDim2.fromOffset(0, 16 + BarYOffset),
                     Size = UDim2.new(1, 0, 0, 16),
                     Text = Info.Description,
                     TextSize = 12,
@@ -6138,16 +6181,16 @@ do
                 CustomDisplayText = Info.FormatDisplayValue(Slider, Slider.Value)
             end
 
+            local ValueText = ""
             if CustomDisplayText then
-                DisplayLabel.Text = tostring(CustomDisplayText)
+                ValueText = tostring(CustomDisplayText)
             else
                 if Info.Compact then
-                    DisplayLabel.Text =
-                        string.format("%s: %s%s%s", Slider.Text, Slider.Prefix, Slider.Value, Slider.Suffix)
+                    ValueText = string.format("%s%s%s", Slider.Prefix, Slider.Value, Slider.Suffix)
                 elseif Info.HideMax then
-                    DisplayLabel.Text = string.format("%s%s%s", Slider.Prefix, Slider.Value, Slider.Suffix)
+                    ValueText = string.format("%s%s%s", Slider.Prefix, Slider.Value, Slider.Suffix)
                 else
-                    DisplayLabel.Text = string.format(
+                    ValueText = string.format(
                         "%s%s%s/%s%s%s",
                         Slider.Prefix,
                         Slider.Value,
@@ -6158,6 +6201,11 @@ do
                     )
                 end
             end
+
+            DisplayLabel.Text = ValueText
+            DisplayLabel.TextXAlignment = Enum.TextXAlignment.Right
+            DisplayLabel.Size = UDim2.new(1, -10, 1, 0)
+            DisplayLabel.Position = UDim2.fromOffset(10, 0)
 
             local X = (Slider.Value - Slider.Min) / (Slider.Max - Slider.Min)
             Fill.Size = UDim2.fromScale(X, 1)
@@ -6455,7 +6503,7 @@ do
 
         local Holder = New("Frame", {
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 0, Dropdown.Text and 45 or 28),
+            Size = UDim2.new(1, 0, 0, Dropdown.Text and (Library.IsMobile and 55 or 45) or (Library.IsMobile and 40 or 28)),
             Visible = Dropdown.Visible,
             Parent = Container,
         })
@@ -6475,7 +6523,7 @@ do
             AnchorPoint = Vector2.new(0, 1),
             BackgroundColor3 = "ElevatedColor",
             Position = UDim2.fromScale(0, 1),
-            Size = UDim2.new(1, 0, 0, 21),
+            Size = UDim2.new(1, 0, 0, Library.IsMobile and 36 or 21),
             Text = "",
             TextTransparency = 1,
             ZIndex = 2,
@@ -6628,7 +6676,7 @@ do
             end)
         end))
 
-        local ItemHeight = 32
+        local ItemHeight = Library.IsMobile and 44 or 32
         local PoolSize = math.max(1, Info.MaxVisibleDropdownItems + 2)
         local Pool = {}
         local FilteredEntries = {}
@@ -9415,6 +9463,119 @@ function Library:CreateWindow(WindowInfo)
             })
         end
 
+        --// Window Control Buttons (Minimize, Maximize, Close) \\--
+        local WindowControls = New("Frame", {
+            AnchorPoint = Vector2.new(1, 0.5),
+            BackgroundTransparency = 1,
+            Position = UDim2.new(1, Library.IsMobile and -10 or -44, 0.5, 0),
+            Size = UDim2.new(0, Library.IsMobile and 0 or 90, 1, -8),
+            Parent = TopBar,
+            ZIndex = 5,
+        })
+        New("UIListLayout", {
+            FillDirection = Enum.FillDirection.Horizontal,
+            HorizontalAlignment = Enum.HorizontalAlignment.Right,
+            VerticalAlignment = Enum.VerticalAlignment.Center,
+            Padding = UDim.new(0, 4),
+            Parent = WindowControls,
+        })
+
+        local function CreateWindowButton(Name, Icon, Color, Callback)
+            local Button = New("TextButton", {
+                BackgroundColor3 = Color,
+                BackgroundTransparency = 1,
+                Size = UDim2.fromOffset(28, 28),
+                Text = "",
+                AutoButtonColor = false,
+                ZIndex = 6,
+                Parent = WindowControls,
+            })
+            table.insert(Library.Corners, New("UICorner", { CornerRadius = UDim.new(1, 0), Parent = Button }))
+            New("UIStroke", {
+                Color = Color,
+                Transparency = 1,
+                Thickness = 1.5,
+                Parent = Button,
+            })
+            local IconLabel = New("ImageLabel", {
+                AnchorPoint = Vector2.new(0.5, 0.5),
+                BackgroundTransparency = 1,
+                Image = Icon and Icon.Url or "",
+                ImageColor3 = "FontColor",
+                ImageRectOffset = Icon and Icon.ImageRectOffset or Vector2.zero,
+                ImageRectSize = Icon and Icon.ImageRectSize or Vector2.zero,
+                Position = UDim2.fromScale(0.5, 0.5),
+                Size = UDim2.fromOffset(12, 12),
+                Parent = Button,
+            })
+            Button.MouseEnter:Connect(function()
+                TweenService:Create(Button, Library.TweenInfo, { BackgroundTransparency = 0.1 }):Play()
+                TweenService:Create(IconLabel, Library.TweenInfo, { ImageTransparency = 0 }):Play()
+            end)
+            Button.MouseLeave:Connect(function()
+                TweenService:Create(Button, Library.TweenInfo, { BackgroundTransparency = 1 }):Play()
+                TweenService:Create(IconLabel, Library.TweenInfo, { ImageTransparency = 0.3 }):Play()
+            end)
+            Button.MouseButton1Click:Connect(Callback)
+            return Button
+        end
+
+        if MinimizeIcon then
+            CreateWindowButton("Minimize", MinimizeIcon, Color3.fromRGB(245, 200, 70), function()
+                Window:Minimize()
+            end)
+        end
+        if MaximizeIcon then
+            CreateWindowButton("Maximize", MaximizeIcon, Color3.fromRGB(95, 195, 95), function()
+                Window:Maximize()
+            end)
+        end
+        if CloseIcon then
+            CreateWindowButton("Close", CloseIcon, Color3.fromRGB(245, 105, 95), function()
+                Window:Close()
+            end)
+        end
+
+        --// Mobile Restore Button (shows when minimized) \\--
+        local MobileRestoreButton
+        if Library.IsMobile then
+            MobileRestoreButton = New("TextButton", {
+                AnchorPoint = Vector2.new(0.5, 1),
+                BackgroundColor3 = "AccentColor",
+                BackgroundTransparency = 0,
+                Position = UDim2.new(0.5, 0, 1, -20),
+                Size = UDim2.fromOffset(56, 56),
+                Text = "",
+                AutoButtonColor = false,
+                Visible = false,
+                ZIndex = 100,
+                Parent = ScreenGui,
+            })
+            table.insert(Library.Corners, New("UICorner", { CornerRadius = UDim.new(1, 0), Parent = MobileRestoreButton }))
+            New("UIStroke", {
+                Color = "AccentColor",
+                Thickness = 2,
+                Parent = MobileRestoreButton,
+            })
+            if RestoreIcon then
+                New("ImageLabel", {
+                    AnchorPoint = Vector2.new(0.5, 0.5),
+                    BackgroundTransparency = 1,
+                    Image = RestoreIcon.Url,
+                    ImageColor3 = "FontColor",
+                    ImageRectOffset = RestoreIcon.ImageRectOffset,
+                    ImageRectSize = RestoreIcon.ImageRectSize,
+                    Position = UDim2.fromScale(0.5, 0.5),
+                    Size = UDim2.fromOffset(24, 24),
+                    Parent = MobileRestoreButton,
+                })
+            end
+            Library:MakeDraggable(MobileRestoreButton, MobileRestoreButton, true)
+            MobileRestoreButton.MouseButton1Click:Connect(function()
+                Window:Restore()
+            end)
+        end
+
         --// Bottom Bar \\--
         BottomBackground = New("Frame", {
             AnchorPoint = Vector2.new(0, 1),
@@ -9687,6 +9848,78 @@ function Library:CreateWindow(WindowInfo)
             WindowInfo.TabSwipeFrom = TabSwipeFrom
             Library.TabSwipeFrom = TabSwipeFrom
         end
+    end
+
+    local WindowState = {
+        IsMinimized = false,
+        IsMaximized = false,
+        PreviousSize = nil,
+        PreviousPosition = nil,
+    }
+
+    function Window:Minimize()
+        if WindowState.IsMinimized then return end
+        if WindowState.IsMaximized then Window:Maximize() end
+
+        WindowState.IsMinimized = true
+        WindowState.PreviousSize = MainFrame.Size
+        WindowState.PreviousPosition = MainFrame.Position
+
+        MainFrame.Visible = false
+
+        if MobileRestoreButton then
+            MobileRestoreButton.Visible = true
+            PositionDraggable(MobileRestoreButton, MobileRestoreButton.Position)
+        end
+
+        Library.Toggled = false
+        if WindowInfo.UnlockMouseWhileOpen then
+            ModalElement.Modal = false
+        end
+    end
+
+    function Window:Maximize()
+        if WindowState.IsMaximized then
+            if WindowState.PreviousSize and WindowState.PreviousPosition then
+                local Tween = TweenService:Create(MainFrame, Library.WindowAnimationInfo, {
+                    Size = WindowState.PreviousSize,
+                    Position = WindowState.PreviousPosition,
+                })
+                Tween:Play()
+            end
+            WindowState.IsMaximized = false
+        else
+            WindowState.IsMaximized = true
+            WindowState.PreviousSize = MainFrame.Size
+            WindowState.PreviousPosition = MainFrame.Position
+
+            local ViewportSize = workspace.CurrentCamera.ViewportSize
+            local TargetSize = UDim2.fromOffset(ViewportSize.X - 20, ViewportSize.Y - 20)
+            local TargetPos = UDim2.fromOffset(10, 10)
+
+            local Tween = TweenService:Create(MainFrame, Library.WindowAnimationInfo, {
+                Size = TargetSize,
+                Position = TargetPos,
+            })
+            Tween:Play()
+        end
+    end
+
+    function Window:Close()
+        Library:Toggle(false)
+    end
+
+    function Window:Restore()
+        if not WindowState.IsMinimized then return end
+
+        WindowState.IsMinimized = false
+        MainFrame.Visible = true
+
+        if MobileRestoreButton then
+            MobileRestoreButton.Visible = false
+        end
+
+        Library:Toggle(true)
     end
 
     local function ApplyCompact()
