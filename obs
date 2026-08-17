@@ -182,6 +182,7 @@ local Library = {
     ActiveTab = nil,
     Tabs = {},
     TabButtons = {},
+    UISettingsTab = nil,
 
     --// Dependency Boxes \\--
     DependencyBoxes = {},
@@ -1506,6 +1507,23 @@ function Library:GetTextBounds(Text: string, Font: Font, Size: number, Width: nu
     return Bounds.X, Bounds.Y
 end
 
+local function GetWrappedTextHeight(Text: string, Label: TextLabel | TextButton, Width: number, MinimumHeight: number?): number
+    Text = tostring(Text or "")
+    Width = math.max(1, Width)
+
+    local _, Height = Library:GetTextBounds(Text, Label.FontFace, Label.TextSize, Width)
+    return math.max(MinimumHeight or Label.TextSize, math.ceil(Height))
+end
+
+local function NormalizeTabName(Name: string?): string
+    return string.lower(Trim(tostring(Name or "")):gsub("%s+", " "))
+end
+
+local function IsSettingsTabName(Name: string?): boolean
+    local Normalized = NormalizeTabName(Name)
+    return Normalized == "ui settings" or Normalized == "settings" or Normalized == "ui setting"
+end
+
 function Library:MouseIsOverFrame(Frame: GuiObject, Mouse: Vector2): boolean
     local AbsPos, AbsSize = Frame.AbsolutePosition, Frame.AbsoluteSize
     return Mouse.X >= AbsPos.X
@@ -1918,14 +1936,49 @@ function Library:PlayTabAnimation(TabCanvas: CanvasGroup, Showing: boolean, OnCo
             end
         end)
     else
-        TabCanvas.GroupTransparency = 1
-        TabCanvas.Visible = false
-        TabCanvas.Position = UDim2.fromScale(0, 0)
-        TabCanvas.ZIndex = BaseZIndex
+        local TweenInfo = Library.TabTransitionInfo or TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+        local Offset = Library.TabSwipeOffset or 26
+        local SwipeFrom = string.lower(Library.TabSwipeFrom or "bottom")
+        local EndPosition
 
-        if OnComplete then
-            OnComplete()
+        if SwipeFrom == "left" then
+            EndPosition = UDim2.fromOffset(Offset, 0)
+        elseif SwipeFrom == "top" then
+            EndPosition = UDim2.fromOffset(0, Offset)
+        elseif SwipeFrom == "right" then
+            EndPosition = UDim2.fromOffset(-Offset, 0)
+        else
+            EndPosition = UDim2.fromOffset(0, -Offset)
         end
+
+        local Tween = TweenService:Create(TabCanvas, TweenInfo, {
+            GroupTransparency = 1,
+            Position = EndPosition,
+        })
+
+        TabCanvas.Visible = true
+        TabCanvas.ZIndex = BaseZIndex
+        ActiveTabTweens[TabCanvas] = Tween
+        Tween:Play()
+
+        local Connection; Connection = Tween.Completed:Connect(function(PlaybackState)
+            if Connection then
+                Connection:Disconnect()
+            end
+
+            if ActiveTabTweens[TabCanvas] == Tween then
+                ActiveTabTweens[TabCanvas] = nil
+            end
+
+            if PlaybackState ~= Enum.PlaybackState.Cancelled then
+                TabCanvas.Visible = false
+                TabCanvas.GroupTransparency = 0
+                TabCanvas.Position = UDim2.fromScale(0, 0)
+                if OnComplete then
+                    OnComplete()
+                end
+            end
+        end)
     end
 end
 
@@ -2615,6 +2668,12 @@ function Library:AddContextMenu(
                 TweenService:Create(MenuScale, TweenInfo, { Scale = 1 }):Play()
             end
 
+            local MenuStroke = Menu:FindFirstChildOfClass("UIStroke")
+            if MenuStroke then
+                Menu.BackgroundTransparency = 1
+                TweenService:Create(Menu, TweenInfo, { BackgroundTransparency = 0 }):Play()
+            end
+
             local Tween = TweenService:Create(Menu, TweenInfo, { Size = OpenSize })
             Table.OpenCloseTween = Tween
 
@@ -2693,6 +2752,8 @@ function Library:AddContextMenu(
             if MenuScale then
                 TweenService:Create(MenuScale, TweenInfo, { Scale = 0.96 }):Play()
             end
+
+            TweenService:Create(Menu, TweenInfo, { BackgroundTransparency = 1 }):Play()
 
             local Tween = TweenService:Create(Menu, TweenInfo, { Size = CollapsedSize })
             Table.OpenCloseTween = Tween
@@ -5211,6 +5272,7 @@ do
 
         local HasDescription = Info.Description ~= nil and Info.Description ~= ""
         local RowHeight = HasDescription and 34 or 18
+        local DescriptionLabel
 
         local Button = New("TextButton", {
             Active = not Toggle.Disabled,
@@ -5224,25 +5286,27 @@ do
         local Label = New("TextLabel", {
             BackgroundTransparency = 1,
             Position = UDim2.fromOffset(26, 0),
-            Size = HasDescription and UDim2.new(1, -26, 0, 16) or UDim2.new(1, -26, 1, 0),
+            Size = HasDescription and UDim2.new(1, -52, 0, 16) or UDim2.new(1, -52, 1, 0),
             Text = Toggle.Text,
             TextSize = 14,
             TextTransparency = 0.4,
+            TextWrapped = true,
             TextXAlignment = Enum.TextXAlignment.Left,
-            TextYAlignment = HasDescription and Enum.TextYAlignment.Top or Enum.TextYAlignment.Center,
+            TextYAlignment = Enum.TextYAlignment.Top,
             Parent = Button,
         })
 
         if HasDescription then
-            New("TextLabel", {
+            DescriptionLabel = New("TextLabel", {
                 BackgroundTransparency = 1,
                 Position = UDim2.fromOffset(26, 18),
-                Size = UDim2.new(1, -26, 0, 16),
+                Size = UDim2.new(1, -52, 0, 16),
                 Text = Info.Description,
                 TextSize = 12,
                 TextTransparency = 0.6,
                 TextXAlignment = Enum.TextXAlignment.Left,
                 TextWrapped = true,
+                TextYAlignment = Enum.TextYAlignment.Top,
                 Parent = Button,
             })
         end
@@ -5255,7 +5319,9 @@ do
         })
 
         local Checkbox = New("Frame", {
+            AnchorPoint = Vector2.new(1, 0.5),
             BackgroundColor3 = "ElevatedColor",
+            Position = UDim2.new(1, 0, 0.5, 0),
             Size = UDim2.fromOffset(18, 18),
             Parent = Button,
         })
@@ -5298,6 +5364,32 @@ do
                 TweenService:Create(CheckboxStroke, Library.TweenInfo, { Transparency = Toggle.Value and 1 or 0 }):Play()
             end)
         end))
+
+        local function RefreshCheckboxLayout()
+            if not Button.Parent then
+                return
+            end
+
+            local Width = math.max(40, Button.AbsoluteSize.X / Library.DPIScale - 52)
+            local TitleHeight = GetWrappedTextHeight(Toggle.Text, Label, Width, 16)
+            local DescriptionHeight = HasDescription and GetWrappedTextHeight(Info.Description, DescriptionLabel, Width, 14) or 0
+            local RequiredHeight = HasDescription and (TitleHeight + DescriptionHeight + 8) or math.max(18, TitleHeight)
+            local FinalHeight = math.max(RowHeight, RequiredHeight)
+
+            Button.Size = UDim2.new(1, 0, 0, FinalHeight)
+            Label.Size = UDim2.new(1, -52, 0, TitleHeight)
+            Label.Position = UDim2.fromOffset(26, HasDescription and 0 or math.max(0, (FinalHeight - TitleHeight) / 2))
+
+            if DescriptionLabel then
+                DescriptionLabel.Position = UDim2.fromOffset(26, TitleHeight + 4)
+                DescriptionLabel.Size = UDim2.new(1, -52, 0, DescriptionHeight)
+            end
+
+            Checkbox.Position = UDim2.new(1, -1, 0, FinalHeight / 2)
+            Groupbox:Resize()
+        end
+
+        table.insert(Toggle.Connections, Button:GetPropertyChangedSignal("AbsoluteSize"):Connect(RefreshCheckboxLayout))
 
         function Toggle:UpdateColors()
             Toggle:Display()
@@ -5401,6 +5493,7 @@ do
         function Toggle:SetText(Text: string)
             Toggle.Text = Text
             Label.Text = Text
+            task.defer(RefreshCheckboxLayout)
         end
 
         table.insert(Toggle.Connections, Button.MouseButton1Click:Connect(function()
@@ -5422,6 +5515,7 @@ do
         end
 
         Toggle:Display()
+        task.defer(RefreshCheckboxLayout)
         Groupbox:Resize()
 
         Toggle.TextLabel = Label
@@ -5512,6 +5606,7 @@ do
 
         local HasDescription = Info.Description ~= nil and Info.Description ~= ""
         local RowHeight = HasDescription and 50 or 34
+        local DescriptionLabel
 
         local Button = New("TextButton", {
             Active = not Toggle.Disabled,
@@ -5528,17 +5623,18 @@ do
         local Label = New("TextLabel", {
             BackgroundTransparency = 1,
             Position = HasDescription and UDim2.fromOffset(0, 7) or UDim2.fromOffset(0, 0),
-            Size = HasDescription and UDim2.new(1, -54, 0, 16) or UDim2.new(1, -54, 1, 0),
+            Size = UDim2.new(1, -54, 0, 16),
             Text = Toggle.Text,
             TextSize = 14,
             TextTransparency = 0.4,
+            TextWrapped = true,
             TextXAlignment = Enum.TextXAlignment.Left,
-            TextYAlignment = HasDescription and Enum.TextYAlignment.Top or Enum.TextYAlignment.Center,
+            TextYAlignment = Enum.TextYAlignment.Top,
             Parent = Button,
         })
 
         if HasDescription then
-            New("TextLabel", {
+            DescriptionLabel = New("TextLabel", {
                 BackgroundTransparency = 1,
                 Position = UDim2.fromOffset(0, 27),
                 Size = UDim2.new(1, -54, 0, 16),
@@ -5547,6 +5643,7 @@ do
                 TextTransparency = 0.6,
                 TextXAlignment = Enum.TextXAlignment.Left,
                 TextWrapped = true,
+                TextYAlignment = Enum.TextYAlignment.Top,
                 Parent = Button,
             })
         end
@@ -5639,6 +5736,34 @@ do
                 TweenService:Create(Button, Library.TweenInfo, { BackgroundTransparency = 0.2 }):Play()
             end)
         end))
+
+        local function RefreshSwitchLayout()
+            if not Button.Parent then
+                return
+            end
+
+            local Width = math.max(40, Button.AbsoluteSize.X / Library.DPIScale - 64)
+            local TitleHeight = GetWrappedTextHeight(Toggle.Text, Label, Width, 16)
+            local DescriptionHeight = HasDescription and GetWrappedTextHeight(Info.Description, DescriptionLabel, Width, 14) or 0
+            local Top = HasDescription and 7 or 0
+            local Gap = HasDescription and 5 or 0
+            local RequiredHeight = Top + TitleHeight + (HasDescription and (Gap + DescriptionHeight + 6) or 0)
+            local FinalHeight = math.max(RowHeight, RequiredHeight)
+
+            Button.Size = UDim2.new(1, 0, 0, FinalHeight)
+            Label.Size = UDim2.new(1, -54, 0, TitleHeight)
+            Label.Position = UDim2.fromOffset(0, HasDescription and 7 or math.max(0, (FinalHeight - TitleHeight) / 2))
+
+            if DescriptionLabel then
+                DescriptionLabel.Position = UDim2.fromOffset(0, Top + TitleHeight + Gap)
+                DescriptionLabel.Size = UDim2.new(1, -54, 0, DescriptionHeight)
+            end
+
+            Switch.Position = UDim2.new(1, 0, 0.5, 0)
+            Groupbox:Resize()
+        end
+
+        table.insert(Toggle.Connections, Button:GetPropertyChangedSignal("AbsoluteSize"):Connect(RefreshSwitchLayout))
 
         function Toggle:UpdateColors()
             Toggle:Display()
@@ -5743,6 +5868,7 @@ do
         function Toggle:SetText(Text: string)
             Toggle.Text = Text
             Label.Text = Text
+            task.defer(RefreshSwitchLayout)
         end
 
         table.insert(Toggle.Connections, Button.MouseButton1Click:Connect(function()
@@ -5858,6 +5984,7 @@ do
         end
 
         Toggle:Display()
+        task.defer(RefreshSwitchLayout)
         Groupbox:Resize()
 
         Toggle.TextLabel = Label
@@ -5962,6 +6089,8 @@ do
             Size = UDim2.new(1, 0, 0, 14),
             Text = Input.Text,
             TextSize = 14,
+            TextWrapped = true,
+            TextYAlignment = Enum.TextYAlignment.Top,
             TextXAlignment = Enum.TextXAlignment.Left,
             Parent = Holder,
         })
@@ -5993,6 +6122,23 @@ do
             Transparency = 0.72,
             Parent = Box,
         })
+
+        local function RefreshInputLayout()
+            if not Holder.Parent then
+                return
+            end
+
+            local Width = math.max(40, Holder.AbsoluteSize.X / Library.DPIScale)
+            local LabelHeight = GetWrappedTextHeight(Input.Text, Label, Width, 14)
+            local TotalHeight = LabelHeight + 3 + 26
+
+            Holder.Size = UDim2.new(1, 0, 0, TotalHeight)
+            Label.Size = UDim2.new(1, 0, 0, LabelHeight)
+            Box.Position = UDim2.new(0, 0, 1, 0)
+            Groupbox:Resize()
+        end
+
+        table.insert(Input.Connections, Holder:GetPropertyChangedSignal("AbsoluteSize"):Connect(RefreshInputLayout))
 
         table.insert(
             Library.Corners,
@@ -6069,6 +6215,7 @@ do
         function Input:SetText(Text: string)
             Input.Text = Text
             Label.Text = Text
+            task.defer(RefreshInputLayout)
         end
 
         if Input.Finished then
@@ -6187,6 +6334,7 @@ do
             Type = "Slider",
         }
 
+        local DescriptionLabel
         local HasDescription = not Info.Compact and Info.Description ~= nil and Info.Description ~= ""
         local IsLabelOutside = Info.LabelOutside == true or (Library.IsMobile and Info.LabelOutside ~= false)
         local LabelHeight = IsLabelOutside and 18 or 0
@@ -6223,7 +6371,7 @@ do
             end
 
             if HasDescription then
-                New("TextLabel", {
+                DescriptionLabel = New("TextLabel", {
                     BackgroundTransparency = 1,
                     Position = UDim2.fromOffset(0, 16 + BarYOffset),
                     Size = UDim2.new(1, 0, 0, 16),
@@ -6232,18 +6380,23 @@ do
                     TextTransparency = 0.6,
                     TextXAlignment = Enum.TextXAlignment.Left,
                     TextWrapped = true,
+                    TextYAlignment = Enum.TextYAlignment.Top,
                     Parent = Holder,
                 })
             end
         end
 
-        local DisplayLabel = New("TextLabel", {
+        local DisplayLabel = New("TextButton", {
+            Active = not Slider.Disabled,
+            AutoButtonColor = false,
             BackgroundTransparency = 1,
             Size = UDim2.new(0, 64, 0, 16),
             Position = UDim2.new(1, -64, 0, 0),
             Text = "",
             TextSize = 14,
+            TextWrapped = true,
             TextXAlignment = Enum.TextXAlignment.Right,
+            TextYAlignment = Enum.TextYAlignment.Top,
             ZIndex = 4,
             Visible = not Info.Compact,
             Parent = Holder,
@@ -6260,21 +6413,30 @@ do
         })
 
         local InputTextBox
-        if Info.AllowRightClickInput then
+        if not Info.Compact then
             InputTextBox = New("TextBox", {
-                BackgroundTransparency = 1,
-                Size = UDim2.fromScale(1, 1),
-                Text = "",
-                TextSize = 14,
-                ZIndex = Bar.ZIndex + 3,
-                Visible = false,
+                Active = not Slider.Disabled,
+                BackgroundColor3 = "ElevatedColor",
+                BackgroundTransparency = 0.05,
                 ClearTextOnFocus = false,
-                Parent = Bar,
+                Size = UDim2.new(0, 64, 0, 16),
+                Text = "",
+                TextEditable = not Slider.Disabled,
+                TextSize = 14,
+                TextXAlignment = Enum.TextXAlignment.Right,
+                TextYAlignment = Enum.TextYAlignment.Top,
+                ZIndex = DisplayLabel.ZIndex + 1,
+                Visible = false,
+                Parent = Holder,
+            })
+            New("UICorner", {
+                CornerRadius = UDim.new(0, 4),
+                Parent = InputTextBox,
             })
             New("UIStroke", {
-                ApplyStrokeMode = Enum.ApplyStrokeMode.Contextual,
-                Color = "DarkColor",
-                LineJoinMode = Enum.LineJoinMode.Miter,
+                ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
+                Color = "AccentColor",
+                Transparency = 0.35,
                 Parent = InputTextBox,
             })
         end
@@ -6327,6 +6489,54 @@ do
             Parent = Knob,
         })
 
+        -- Reflow slider title/value/description so long text grows downward instead of overlapping.
+        local function RefreshSliderLayout(ValueText: string?)
+            if Info.Compact or not Holder.Parent then
+                return
+            end
+
+            local ContentWidth = math.max(120, Holder.AbsoluteSize.X / Library.DPIScale)
+            local RawValueText = tostring(ValueText or DisplayLabel.Text or "")
+            local ValueTextBounds = Library:GetTextBounds(RawValueText, DisplayLabel.FontFace, DisplayLabel.TextSize, math.max(2048, ContentWidth * 2))
+            local ValueWidth = math.clamp(math.ceil(ValueTextBounds.X) + 10, 64, math.max(64, ContentWidth * 0.45))
+            local LabelWidth = math.max(40, ContentWidth - ValueWidth - 8)
+
+            local TitleHeight = GetWrappedTextHeight(Slider.Text, SliderLabel, LabelWidth, 16)
+            local ValueHeight = GetWrappedTextHeight(RawValueText, DisplayLabel, ValueWidth, 16)
+            local HeaderHeight = math.max(TitleHeight, ValueHeight)
+            local DescriptionHeight = 0
+
+            if DescriptionLabel then
+                DescriptionHeight = GetWrappedTextHeight(DescriptionLabel.Text, DescriptionLabel, ContentWidth, 14)
+            end
+
+            local DescriptionGap = DescriptionLabel and 5 or 0
+            local BarGap = 6
+            local TotalHeight = HeaderHeight + DescriptionGap + DescriptionHeight + BarGap + 18
+            TotalHeight = math.max(TotalHeight, IsLabelOutside and 40 or 38)
+
+            Holder.Size = UDim2.new(1, 0, 0, TotalHeight)
+            SliderLabel.Size = UDim2.new(0, LabelWidth, 0, TitleHeight)
+            SliderLabel.Position = UDim2.fromOffset(0, 0)
+
+            DisplayLabel.Size = UDim2.new(0, ValueWidth, 0, ValueHeight)
+            DisplayLabel.Position = UDim2.new(1, -ValueWidth, 0, 0)
+            DisplayLabel.TextWrapped = ValueWidth < ValueTextBounds.X
+
+            if InputTextBox then
+                InputTextBox.Size = DisplayLabel.Size
+                InputTextBox.Position = DisplayLabel.Position
+            end
+
+            if DescriptionLabel then
+                DescriptionLabel.Position = UDim2.fromOffset(0, HeaderHeight + DescriptionGap - 1)
+                DescriptionLabel.Size = UDim2.new(1, 0, 0, DescriptionHeight)
+            end
+
+            Bar.Position = UDim2.new(0, 0, 1, 0)
+            Groupbox:Resize()
+        end
+
         function Slider:UpdateColors()
             if Library.Unloaded then
                 return
@@ -6337,7 +6547,7 @@ do
             end
             DisplayLabel.TextTransparency = Slider.Disabled and 0.8 or 0
             
-            if Info.AllowRightClickInput then
+            if InputTextBox then
                 InputTextBox.TextTransparency = Slider.Disabled and 0.8 or 0
             end
 
@@ -6378,8 +6588,12 @@ do
 
             DisplayLabel.Text = ValueText
             DisplayLabel.TextXAlignment = Enum.TextXAlignment.Right
-            DisplayLabel.Size = UDim2.new(0, 64, 0, 16)
-            DisplayLabel.Position = UDim2.new(1, -64, 0, 0)
+
+            if InputTextBox and not InputTextBox.Visible then
+                DisplayLabel.Visible = true
+            end
+
+            RefreshSliderLayout(ValueText)
 
             local X = (Slider.Value - Slider.Min) / (Slider.Max - Slider.Min)
             Fill.Size = UDim2.fromScale(X, 1)
@@ -6436,6 +6650,15 @@ do
             end
 
             Bar.Active = not Slider.Disabled
+            DisplayLabel.Active = not Slider.Disabled
+            if InputTextBox then
+                InputTextBox.Active = not Slider.Disabled
+                InputTextBox.TextEditable = not Slider.Disabled
+                if Slider.Disabled then
+                    InputTextBox.Visible = false
+                    DisplayLabel.Visible = true
+                end
+            end
             Slider:UpdateColors()
         end
 
@@ -6450,7 +6673,6 @@ do
             Slider.Text = Text
             if SliderLabel then
                 SliderLabel.Text = Text
-                return
             end
             Slider:Display()
         end
@@ -6465,15 +6687,29 @@ do
             Slider:Display()
         end
 
-        if Info.AllowRightClickInput then
-            local LastValidText = ""
+        local LastValidText = ""
+        local function BeginSliderValueEdit()
+            if not InputTextBox or Slider.Disabled or Slider.Destroyed then
+                return
+            end
+
+            LastValidText = tostring(Slider.Value)
+            InputTextBox.Text = LastValidText
+            InputTextBox.Visible = true
+            DisplayLabel.Visible = false
+            InputTextBox.TextEditable = true
+            InputTextBox:CaptureFocus()
+            InputTextBox.CursorPosition = #InputTextBox.Text + 1
+        end
+
+        if InputTextBox then
+            table.insert(Slider.Connections, DisplayLabel.MouseButton1Click:Connect(BeginSliderValueEdit))
+
             table.insert(Slider.Connections, InputTextBox:GetPropertyChangedSignal("Text"):Connect(function()
                 local Text = InputTextBox.Text
                 local AsNum = tonumber(Text)
 
-                if #tostring(Text) > 0 and not AsNum and Text ~= "-" then
-                    InputTextBox.Text = LastValidText
-                else
+                if Text == "" or Text == "-" or (AsNum and tostring(AsNum) ~= "nan") then
                     if Slider.Rounding == 0 and Text:find("%.") then
                         InputTextBox.Text = LastValidText
                         return
@@ -6493,23 +6729,29 @@ do
                     if AsNum then
                         if AsNum > Slider.Max then
                             InputTextBox.Text = tostring(Slider.Max)
+                            LastValidText = InputTextBox.Text
                         elseif AsNum < Slider.Min then
                             InputTextBox.Text = tostring(Slider.Min)
+                            LastValidText = InputTextBox.Text
                         end
                     end
+                else
+                    InputTextBox.Text = LastValidText
                 end
             end))
 
             table.insert(Slider.Connections, InputTextBox.FocusLost:Connect(function()
-                InputTextBox.Visible = false
-                DisplayLabel.Visible = true
+                local Text = InputTextBox.Text
+                local Num = tonumber(Text)
 
-                local Num = tonumber(InputTextBox.Text)
                 if not Num then
-                    return
+                    Num = Slider.Value
                 end
 
-                Num = Round(Num, Slider.Rounding)
+                Num = Round(math.clamp(Num, Slider.Min, Slider.Max), Slider.Rounding)
+                InputTextBox.Text = tostring(Num)
+                InputTextBox.Visible = false
+                DisplayLabel.Visible = true
                 Slider:SetValue(Num)
             end))
         end
@@ -6533,7 +6775,7 @@ do
                 return
             end
 
-            if Info.AllowRightClickInput then
+            if InputTextBox then
                 local IsRightClick = Input.UserInputType == Enum.UserInputType.MouseButton2
                 local IsDoubleTap = false
 
@@ -6541,16 +6783,11 @@ do
                     if tick() - LastTap < 0.3 then
                         IsDoubleTap = true
                     end
-                    
                     LastTap = tick()
                 end
 
                 if IsRightClick or IsDoubleTap then
-                    InputTextBox.Text = tostring(Slider.Value)
-                    InputTextBox.Visible = true
-                    DisplayLabel.Visible = false
-
-                    task.spawn(InputTextBox.CaptureFocus, InputTextBox)
+                    BeginSliderValueEdit()
                     return
                 end
             end
@@ -6606,6 +6843,9 @@ do
 
         Slider:UpdateColors()
         Slider:Display()
+        task.defer(function()
+            RefreshSliderLayout(DisplayLabel.Text)
+        end)
         Groupbox:Resize()
 
         Slider.Holder = Holder
@@ -6878,7 +7118,7 @@ do
             end)
         end))
 
-        local ItemHeight = Library.IsMobile and 44 or 32
+        local ItemHeight = Library.IsMobile and 46 or 40
         local PoolSize = math.max(1, Info.MaxVisibleDropdownItems + 2)
         local Pool = {}
         local FilteredEntries = {}
@@ -7225,7 +7465,9 @@ do
                 Text = "",
                 TextSize = 14,
                 TextTransparency = 0.5,
+                TextWrapped = true,
                 TextXAlignment = Enum.TextXAlignment.Left,
+                TextYAlignment = Enum.TextYAlignment.Center,
                 Parent = Container,
             })
             New("UIPadding", {
@@ -10210,6 +10452,22 @@ function Library:CreateWindow(WindowInfo)
         end
     end
 
+    local function KeepUISettingsLast()
+        local SettingsButton = Library.UISettingsTab and Library.UISettingsTab.Button
+        if not SettingsButton or not SettingsButton.Parent then
+            return
+        end
+
+        local MaxOrder = -1
+        for _, Child in ipairs(Tabs:GetChildren()) do
+            if Child:IsA("GuiButton") and Child ~= SettingsButton and Child.Visible then
+                MaxOrder = math.max(MaxOrder, Child.LayoutOrder)
+            end
+        end
+
+        SettingsButton.LayoutOrder = MaxOrder + 1
+    end
+
     function Window:AddTab(...)
         local Name = nil
         local Icon = nil
@@ -10266,7 +10524,10 @@ function Library:CreateWindow(WindowInfo)
                 Text = Name,
                 TextSize = 15,
                 TextTransparency = 0.45,
+                TextWrapped = true,
+                TextTruncate = Enum.TextTruncate.AtEnd,
                 TextXAlignment = Enum.TextXAlignment.Left,
+                TextYAlignment = Enum.TextYAlignment.Center,
                 Visible = not IsCompact,
                 Parent = TabButton,
             })
@@ -10469,6 +10730,8 @@ function Library:CreateWindow(WindowInfo)
         --// Tab Table \\--
         local Tab = {
             Description = Description,
+            Button = TabButton,
+            IsUISettings = IsSettingsTabName(Name),
 
             Connections = {},
             Destroyed = false,
@@ -11350,6 +11613,9 @@ function Library:CreateWindow(WindowInfo)
             end
             
             Library.Tabs[Name] = nil
+            if Library.UISettingsTab == Tab then
+                Library.UISettingsTab = nil
+            end
         end
 
         --// Execution \\--
@@ -11366,6 +11632,11 @@ function Library:CreateWindow(WindowInfo)
         TabButton.MouseButton1Click:Connect(Tab.Show)
 
         Library.Tabs[Name] = Tab
+
+        if Tab.IsUISettings then
+            Library.UISettingsTab = Tab
+        end
+        KeepUISettingsLast()
 
         return Tab
     end
