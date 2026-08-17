@@ -2609,6 +2609,12 @@ function Library:AddContextMenu(
             Menu.Size = UDim2.new(OpenSize.X.Scale, OpenSize.X.Offset, 0, 0)
             Menu.Visible = true
 
+            local MenuScale = Menu:FindFirstChildOfClass("UIScale")
+            if MenuScale then
+                MenuScale.Scale = 0.96
+                TweenService:Create(MenuScale, TweenInfo, { Scale = 1 }):Play()
+            end
+
             local Tween = TweenService:Create(Menu, TweenInfo, { Size = OpenSize })
             Table.OpenCloseTween = Tween
 
@@ -2682,6 +2688,11 @@ function Library:AddContextMenu(
 
             local CurrentSize = Menu.Size
             local CollapsedSize = UDim2.new(CurrentSize.X.Scale, CurrentSize.X.Offset, 0, 0)
+
+            local MenuScale = Menu:FindFirstChildOfClass("UIScale")
+            if MenuScale then
+                TweenService:Create(MenuScale, TweenInfo, { Scale = 0.96 }):Play()
+            end
 
             local Tween = TweenService:Create(Menu, TweenInfo, { Size = CollapsedSize })
             Table.OpenCloseTween = Tween
@@ -3999,6 +4010,18 @@ do
             Parent = Holder,
         })
 
+        local HolderScale = New("UIScale", {
+            Scale = 1,
+            Parent = Holder,
+        })
+
+        Holder.MouseEnter:Connect(function()
+            TweenService:Create(HolderScale, Library.TweenInfo, { Scale = 1.1 }):Play()
+        end)
+        Holder.MouseLeave:Connect(function()
+            TweenService:Create(HolderScale, Library.TweenInfo, { Scale = 1 }):Play()
+        end)
+
         table.insert(
             Library.Corners,
             New("UICorner", {
@@ -4882,6 +4905,25 @@ do
                 Button.Tween:Play()
             end)
 
+            Button.Base.MouseButton1Down:Connect(function()
+                if Button.Disabled then
+                    return
+                end
+
+                pcall(function()
+                    TweenService:Create(Button.Base, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.new(1, 0, 0.92, 0) }):Play()
+                end)
+            end)
+            Button.Base.MouseButton1Up:Connect(function()
+                if Button.Disabled then
+                    return
+                end
+
+                pcall(function()
+                    TweenService:Create(Button.Base, Library.TweenInfo, { Size = UDim2.new(1, 0, 1, 0) }):Play()
+                end)
+            end)
+
             Button.Base.MouseButton1Click:Connect(function()
                 if Button.Disabled or Button.Locked then
                     return
@@ -5287,6 +5329,12 @@ do
                 Transparency = Toggle.Value and 1 or 0,
             }):Play()
 
+            if Toggle.Value and Toggle.LastChecked ~= true then
+                CheckImage.Size = UDim2.fromScale(0.6, 0.6)
+                TweenService:Create(CheckImage, TweenInfo.new(0.22, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Size = UDim2.new(1, -4, 1, -4) }):Play()
+            end
+            Toggle.LastChecked = Toggle.Value
+
             local Fill = TweenService:Create(Checkbox, Library.TweenInfo, {
                 BackgroundColor3 = Toggle.Value and Library.Scheme.AccentColor or Library.Scheme.ElevatedColor,
             })
@@ -5566,6 +5614,32 @@ do
             end)
         end))
 
+        -- Hover & press animations for the whole toggle row
+        table.insert(Toggle.Connections, Button.MouseEnter:Connect(function()
+            if Toggle.Disabled then return end
+            pcall(function()
+                TweenService:Create(Button, Library.TweenInfo, { BackgroundTransparency = 0.2 }):Play()
+            end)
+        end))
+        table.insert(Toggle.Connections, Button.MouseLeave:Connect(function()
+            if Toggle.Disabled then return end
+            pcall(function()
+                TweenService:Create(Button, Library.TweenInfo, { BackgroundTransparency = 0.35 }):Play()
+            end)
+        end))
+        table.insert(Toggle.Connections, Button.MouseButton1Down:Connect(function()
+            if Toggle.Disabled then return end
+            pcall(function()
+                TweenService:Create(Button, Library.TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 0.1 }):Play()
+            end)
+        end))
+        table.insert(Toggle.Connections, Button.MouseButton1Up:Connect(function()
+            if Toggle.Disabled then return end
+            pcall(function()
+                TweenService:Create(Button, Library.TweenInfo, { BackgroundTransparency = 0.2 }):Play()
+            end)
+        end))
+
         function Toggle:UpdateColors()
             Toggle:Display()
         end
@@ -5820,7 +5894,7 @@ do
             Parent = Box,
         })
 
-        New("UIStroke", {
+        local InputStroke = New("UIStroke", {
             Color = "OutlineColor",
             Transparency = 0.72,
             Parent = Box,
@@ -5910,6 +5984,9 @@ do
                         Box.Text = Input.Value
                     end
 
+                    TweenService:Create(InputStroke, Library.TweenInfo, { Transparency = 0.72 }):Play()
+                    TweenService:Create(Box, Library.TweenInfo, { BackgroundColor3 = Library.Scheme.ElevatedColor }):Play()
+
                     return
                 end
 
@@ -5922,6 +5999,12 @@ do
                 Input:SetValue(Box.Text)
             end))
         end
+
+        table.insert(Input.Connections, Box.Focused:Connect(function()
+            if Input.Disabled then return end
+            TweenService:Create(InputStroke, Library.TweenInfo, { Transparency = 0, Color = Library.Scheme.AccentColor }):Play()
+            TweenService:Create(Box, Library.TweenInfo, { BackgroundColor3 = Library:GetBetterColor(Library.Scheme.ElevatedColor, 10) }):Play()
+        end))
 
         if typeof(Input.Tooltip) == "string" or typeof(Input.DisabledTooltip) == "string" then
             Input.TooltipTable = Library:AddTooltip(Input.Tooltip, Input.DisabledTooltip, Box)
@@ -6016,7 +6099,7 @@ do
 
         local Holder = New("Frame", {
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 0, Info.Compact and 18 or (HasDescription and 56 + LabelHeight or 38 + LabelHeight)),
+            Size = UDim2.new(1, 0, 0, Info.Compact and 18 or (HasDescription and 64 + LabelHeight or 48 + LabelHeight)),
             Visible = Slider.Visible,
             Parent = Container,
         })
@@ -6065,7 +6148,7 @@ do
             AnchorPoint = Vector2.new(0, 1),
             BackgroundTransparency = 1,
             Position = UDim2.fromScale(0, 1),
-            Size = UDim2.new(1, 0, 0, 18),
+            Size = UDim2.new(1, 0, 0, Info.Compact and 18 or 26),
             Text = "",
             Parent = Holder,
         })
@@ -6109,7 +6192,7 @@ do
             AnchorPoint = Vector2.new(0, 0.5),
             BackgroundColor3 = "ElevatedColor",
             Position = UDim2.fromScale(0, 0.5),
-            Size = UDim2.new(1, 0, 0, 8),
+            Size = UDim2.new(1, 0, 0, Info.Compact and 6 or 22),
             ZIndex = Bar.ZIndex,
             Parent = Bar,
         })
@@ -6138,7 +6221,7 @@ do
             AnchorPoint = Vector2.new(0.5, 0.5),
             BackgroundColor3 = "WhiteColor",
             Position = UDim2.fromScale(1, 0.5),
-            Size = UDim2.fromOffset(18, 18),
+            Size = UDim2.fromOffset(Info.Compact and 16 or 24, Info.Compact and 16 or 24),
             ZIndex = Track.ZIndex + 2,
             Parent = Fill,
         })
@@ -6204,7 +6287,7 @@ do
 
             DisplayLabel.Text = ValueText
             DisplayLabel.TextXAlignment = Enum.TextXAlignment.Right
-            DisplayLabel.Size = UDim2.new(1, -10, 1, 0)
+            DisplayLabel.Size = UDim2.new(1, -34, 1, 0)
             DisplayLabel.Position = UDim2.fromOffset(10, 0)
 
             local X = (Slider.Value - Slider.Min) / (Slider.Max - Slider.Min)
@@ -6341,6 +6424,18 @@ do
         end
 
         local LastTap = 0
+        table.insert(Slider.Connections, Bar.MouseEnter:Connect(function()
+            if Slider.Disabled then return end
+            pcall(function()
+                TweenService:Create(Track, Library.TweenInfo, { BackgroundColor3 = Library:GetBetterColor(Library.Scheme.ElevatedColor, 8) }):Play()
+            end)
+        end))
+        table.insert(Slider.Connections, Bar.MouseLeave:Connect(function()
+            if Slider.Disabled then return end
+            pcall(function()
+                TweenService:Create(Track, Library.TweenInfo, { BackgroundColor3 = Library.Scheme.ElevatedColor }):Play()
+            end)
+        end))
         table.insert(Slider.Connections, Bar.InputBegan:Connect(function(Input: InputObject)
             local ValidInput = IsClickInput(Input) or Input.UserInputType == Enum.UserInputType.MouseButton2
             if not ValidInput or Slider.Disabled then
@@ -6383,6 +6478,8 @@ do
                 Library.ActiveLoading.Sidebar.Container.ScrollingEnabled = false
             end
 
+            TweenService:Create(Knob, TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Size = UDim2.fromOffset(Info.Compact and 20 or 28, Info.Compact and 20 or 28) }):Play()
+
             while IsDragInput(Input) and not Slider.Destroyed do
                 local Location = Mouse.X
                 local Scale = math.clamp((Location - Bar.AbsolutePosition.X) / Bar.AbsoluteSize.X, 0, 1)
@@ -6397,6 +6494,8 @@ do
 
                 RunService.RenderStepped:Wait()
             end
+
+            TweenService:Create(Knob, Library.TweenInfo, { Size = UDim2.fromOffset(Info.Compact and 16 or 24, Info.Compact and 16 or 24) }):Play()
 
             if Library.ActiveTab then
                 for _, Side in Library.ActiveTab.Sides do
@@ -6664,15 +6763,27 @@ do
         table.insert(Dropdown.Connections, DisplayContainer.MouseEnter:Connect(function()
             if Dropdown.Disabled then return end
             pcall(function()
-                TweenService:Create(DisplayContainer, Library.TweenInfo, { BackgroundTransparency = 0 }):Play()
-                TweenService:Create(ArrowImage, Library.TweenInfo, { ImageTransparency = 0.2 }):Play()
+                TweenService:Create(DisplayContainer, Library.TweenInfo, { BackgroundTransparency = 0, BackgroundColor3 = Library:GetBetterColor(Library.Scheme.ElevatedColor, 8) }):Play()
+                TweenService:Create(ArrowImage, Library.TweenInfo, { ImageTransparency = 0 }):Play()
             end)
         end))
         table.insert(Dropdown.Connections, DisplayContainer.MouseLeave:Connect(function()
             if Dropdown.Disabled then return end
             pcall(function()
-                TweenService:Create(DisplayContainer, Library.TweenInfo, { BackgroundTransparency = 0 }):Play()
+                TweenService:Create(DisplayContainer, Library.TweenInfo, { BackgroundTransparency = 0, BackgroundColor3 = Library.Scheme.ElevatedColor }):Play()
                 TweenService:Create(ArrowImage, Library.TweenInfo, { ImageTransparency = Dropdown.Disabled and 0.8 or (MenuTable.Active and 0 or 0.5) }):Play()
+            end)
+        end))
+        table.insert(Dropdown.Connections, DisplayContainer.MouseButton1Down:Connect(function()
+            if Dropdown.Disabled then return end
+            pcall(function()
+                TweenService:Create(DisplayContainer, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 0.2 }):Play()
+            end)
+        end))
+        table.insert(Dropdown.Connections, DisplayContainer.MouseButton1Up:Connect(function()
+            if Dropdown.Disabled then return end
+            pcall(function()
+                TweenService:Create(DisplayContainer, Library.TweenInfo, { BackgroundTransparency = 0 }):Play()
             end)
         end))
 
@@ -7032,10 +7143,25 @@ do
                 Parent = Button,
             })
 
+            local CheckImage = New("ImageLabel", {
+                AnchorPoint = Vector2.new(1, 0.5),
+                BackgroundTransparency = 1,
+                Image = CheckIcon and CheckIcon.Url or "",
+                ImageColor3 = "FontColor",
+                ImageRectOffset = CheckIcon and CheckIcon.ImageRectOffset or Vector2.zero,
+                ImageRectSize = CheckIcon and CheckIcon.ImageRectSize or Vector2.zero,
+                ImageTransparency = 1,
+                Position = UDim2.fromScale(1, 0.5),
+                Size = UDim2.fromOffset(14, 14),
+                ZIndex = Container.ZIndex + 1,
+                Parent = Container,
+            })
+
             Row.Container = Container
             Row.Corner = Corner
             Row.Image = Image
             Row.Button = Button
+            Row.CheckImage = CheckImage
 
             function Row:UpdateButton()
                 local Entry = Row.Entry
@@ -7053,6 +7179,11 @@ do
                 Container.BackgroundColor3 = Selected and Library.Scheme.AccentColor or Container.BackgroundColor3
                 Container.BackgroundTransparency = Selected and 0.82 or 1
                 Button.TextTransparency = Entry.IsDisabled and 0.8 or Selected and 0 or 0.5
+
+                local CheckTarget = (Selected and not Entry.IsDisabled) and 0 or 1
+                if CheckImage.ImageTransparency ~= CheckTarget then
+                    TweenService:Create(CheckImage, Library.TweenInfo, { ImageTransparency = CheckTarget }):Play()
+                end
 
                 if Entry.ValueImage then
                     Image.ImageTransparency = Entry.IsDisabled and 0.8 or Selected and 0 or 0.5
@@ -7088,6 +7219,19 @@ do
                 if not Selected then
                     TweenService:Create(Container, Library.TweenInfo, { BackgroundTransparency = 1, BackgroundColor3 = Library.Scheme.AccentColor }):Play()
                 end
+            end)
+            Button.MouseButton1Down:Connect(function()
+                local Entry = Row.Entry
+                if not Entry or Entry.IsDisabled then return end
+
+                TweenService:Create(Container, Library.TweenInfo, {
+                    Size = UDim2.new(1, -18, 0, ItemHeight - 8),
+                }):Play()
+            end)
+            Button.MouseButton1Up:Connect(function()
+                TweenService:Create(Container, Library.TweenInfo, {
+                    Size = UDim2.new(1, -12, 0, ItemHeight - 4),
+                }):Play()
             end)
 
             Button.MouseButton1Click:Connect(function()
