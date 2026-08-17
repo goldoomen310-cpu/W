@@ -5140,10 +5140,13 @@ do
             Type = "Toggle",
         }
 
+        local HasDescription = Info.Description ~= nil and Info.Description ~= ""
+        local RowHeight = HasDescription and 34 or 18
+
         local Button = New("TextButton", {
             Active = not Toggle.Disabled,
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 0, 18),
+            Size = UDim2.new(1, 0, 0, RowHeight),
             Text = "",
             Visible = Toggle.Visible,
             Parent = Container,
@@ -5152,13 +5155,28 @@ do
         local Label = New("TextLabel", {
             BackgroundTransparency = 1,
             Position = UDim2.fromOffset(26, 0),
-            Size = UDim2.new(1, -26, 1, 0),
+            Size = HasDescription and UDim2.new(1, -26, 0, 16) or UDim2.new(1, -26, 1, 0),
             Text = Toggle.Text,
             TextSize = 14,
             TextTransparency = 0.4,
             TextXAlignment = Enum.TextXAlignment.Left,
+            TextYAlignment = HasDescription and Enum.TextYAlignment.Top or Enum.TextYAlignment.Center,
             Parent = Button,
         })
+
+        if HasDescription then
+            New("TextLabel", {
+                BackgroundTransparency = 1,
+                Position = UDim2.fromOffset(26, 18),
+                Size = UDim2.new(1, -26, 0, 16),
+                Text = Info.Description,
+                TextSize = 12,
+                TextTransparency = 0.6,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextWrapped = true,
+                Parent = Button,
+            })
+        end
 
         New("UIListLayout", {
             FillDirection = Enum.FillDirection.Horizontal,
@@ -5169,8 +5187,7 @@ do
 
         local Checkbox = New("Frame", {
             BackgroundColor3 = "ElevatedColor",
-            Size = UDim2.fromScale(1, 1),
-            SizeConstraint = Enum.SizeConstraint.RelativeYY,
+            Size = UDim2.fromOffset(18, 18),
             Parent = Button,
         })
         table.insert(
@@ -5418,11 +5435,14 @@ do
             Type = "Toggle",
         }
 
+        local HasDescription = Info.Description ~= nil and Info.Description ~= ""
+        local RowHeight = HasDescription and 50 or 34
+
         local Button = New("TextButton", {
             Active = not Toggle.Disabled,
             BackgroundColor3 = "MainColor",
             BackgroundTransparency = 0.35,
-            Size = UDim2.new(1, 0, 0, 34),
+            Size = UDim2.new(1, 0, 0, RowHeight),
             Text = "",
             Visible = Toggle.Visible,
             Parent = Container,
@@ -5432,13 +5452,29 @@ do
 
         local Label = New("TextLabel", {
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, -54, 1, 0),
+            Position = HasDescription and UDim2.fromOffset(0, 7) or UDim2.fromOffset(0, 0),
+            Size = HasDescription and UDim2.new(1, -54, 0, 16) or UDim2.new(1, -54, 1, 0),
             Text = Toggle.Text,
             TextSize = 14,
             TextTransparency = 0.4,
             TextXAlignment = Enum.TextXAlignment.Left,
+            TextYAlignment = HasDescription and Enum.TextYAlignment.Top or Enum.TextYAlignment.Center,
             Parent = Button,
         })
+
+        if HasDescription then
+            New("TextLabel", {
+                BackgroundTransparency = 1,
+                Position = UDim2.fromOffset(0, 27),
+                Size = UDim2.new(1, -54, 0, 16),
+                Text = Info.Description,
+                TextSize = 12,
+                TextTransparency = 0.6,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextWrapped = true,
+                Parent = Button,
+            })
+        end
 
         New("UIListLayout", {
             FillDirection = Enum.FillDirection.Horizontal,
@@ -5448,9 +5484,9 @@ do
         })
 
         local Switch = New("Frame", {
-            AnchorPoint = Vector2.new(1, 0),
+            AnchorPoint = Vector2.new(1, 0.5),
             BackgroundColor3 = "ElevatedColor",
-            Position = UDim2.fromScale(1, 0),
+            Position = UDim2.new(1, 0, 0.5, 0),
             Size = UDim2.fromOffset(40, 24),
             Parent = Button,
         })
@@ -5946,9 +5982,11 @@ do
             Type = "Slider",
         }
 
+        local HasDescription = not Info.Compact and Info.Description ~= nil and Info.Description ~= ""
+
         local Holder = New("Frame", {
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 0, Info.Compact and 18 or 38),
+            Size = UDim2.new(1, 0, 0, Info.Compact and 18 or (HasDescription and 56 or 38)),
             Visible = Slider.Visible,
             Parent = Container,
         })
@@ -5963,6 +6001,20 @@ do
                 TextXAlignment = Enum.TextXAlignment.Left,
                 Parent = Holder,
             })
+
+            if HasDescription then
+                New("TextLabel", {
+                    BackgroundTransparency = 1,
+                    Position = UDim2.fromOffset(0, 16),
+                    Size = UDim2.new(1, 0, 0, 16),
+                    Text = Info.Description,
+                    TextSize = 12,
+                    TextTransparency = 0.6,
+                    TextXAlignment = Enum.TextXAlignment.Left,
+                    TextWrapped = true,
+                    Parent = Holder,
+                })
+            end
         end
 
         local Bar = New("TextButton", {
@@ -6576,7 +6628,7 @@ do
             end)
         end))
 
-        local ItemHeight = 21
+        local ItemHeight = 32
         local PoolSize = math.max(1, Info.MaxVisibleDropdownItems + 2)
         local Pool = {}
         local FilteredEntries = {}
@@ -6774,11 +6826,7 @@ do
                 end
 
                 Row.Container.Visible = true
-                Row.Container.Position = UDim2.fromOffset(0, (DataIndex - 1) * ItemHeight)
-
-                local IsLast = DataIndex == Total
-                Row.Corner.BottomRightRadius = IsLast and UDim.new(0, Library.CornerRadius / 2) or UDim.new(0, 0)
-                Row.Corner.BottomLeftRadius = IsLast and UDim.new(0, Library.CornerRadius / 2) or UDim.new(0, 0)
+                Row.Container.Position = UDim2.fromOffset(6, (DataIndex - 1) * ItemHeight + 2)
 
                 Row.Button.Text = Entry.FormattedValue
 
@@ -6901,32 +6949,29 @@ do
             local Container = New("Frame", {
                 BackgroundColor3 = "AccentColor",
                 BackgroundTransparency = 1,
-                Size = UDim2.new(1, 0, 0, ItemHeight),
+                Size = UDim2.new(1, -12, 0, ItemHeight - 4),
                 Visible = false,
                 Parent = MenuTable.Menu,
             })
 
             local Corner = New("UICorner", {
-                TopLeftRadius = UDim.new(0, 0),
-                TopRightRadius = UDim.new(0, 0),
-                BottomRightRadius = UDim.new(0, 0),
-                BottomLeftRadius = UDim.new(0, 0),
+                CornerRadius = UDim.new(0, 8),
                 Parent = Container,
-            }); table.insert(Library.SpecificCorners, Corner)
+            }); table.insert(Library.Corners, Corner)
 
             local Image = New("ImageLabel", {
                 BackgroundTransparency = 1,
                 Image = "",
                 ImageTransparency = 0.5,
                 Size = UDim2.fromOffset(16, 16),
-                Position = UDim2.fromOffset(4, 3),
+                Position = UDim2.fromOffset(6, (ItemHeight - 4 - 16) / 2),
                 Visible = false,
                 Parent = Container,
             })
 
             local Button = New("TextButton", {
                 BackgroundTransparency = 1,
-                Size = UDim2.new(1, 0, 0, ItemHeight),
+                Size = UDim2.fromScale(1, 1),
                 Text = "",
                 TextSize = 14,
                 TextTransparency = 0.5,
@@ -6934,8 +6979,8 @@ do
                 Parent = Container,
             })
             New("UIPadding", {
-                PaddingLeft = UDim.new(0, 7),
-                PaddingRight = UDim.new(0, 7),
+                PaddingLeft = UDim.new(0, 9),
+                PaddingRight = UDim.new(0, 9),
                 Parent = Button,
             })
 
@@ -10444,12 +10489,19 @@ function Library:CreateWindow(WindowInfo)
 
             local GroupboxHolder
             local GroupboxLabel
+            local GroupboxDesc
 
             local GroupboxContainer
             local GroupboxList
 
             local GroupboxCollapseArrow
-            local GroupboxLine
+
+            local HasDescription = Info.Description ~= nil and Info.Description ~= ""
+            local CardPadding = 14
+            local HeaderTopPadding = 12
+            local HeaderHeight = HasDescription and 56 or (HeaderTopPadding * 2 + 20)
+            local HeaderBodyGap = 8
+            local ContainerPadding = 12
 
             do
                 GroupboxHolder = New("Frame", {
@@ -10466,39 +10518,46 @@ function Library:CreateWindow(WindowInfo)
                 )
                 Library:AddOutline(GroupboxHolder)
 
-                GroupboxLine = Library:MakeLine(GroupboxHolder, {
-                    Position = UDim2.fromOffset(0, 34),
-                    Size = UDim2.new(1, 0, 0, 1),
-                })
-                GroupboxLine.BackgroundTransparency = 0.72
-
                 local BoxIcon = Library:GetCustomIcon(Info.IconName)
+                local IconOffset = BoxIcon and 28 or 0
+
                 if BoxIcon then
                     New("ImageLabel", {
                         Image = BoxIcon.Url,
                         ImageColor3 = BoxIcon.Custom and "WhiteColor" or "AccentColor",
                         ImageRectOffset = BoxIcon.ImageRectOffset,
                         ImageRectSize = BoxIcon.ImageRectSize,
-                        Position = UDim2.fromOffset(6, 6),
-                        Size = UDim2.fromOffset(22, 22),
+                        Position = UDim2.fromOffset(CardPadding, HeaderTopPadding),
+                        Size = UDim2.fromOffset(20, 20),
                         Parent = GroupboxHolder,
                     })
                 end
 
+                local LabelRight = CardPadding + (Info.DisableCollapsing ~= true and 28 or 0)
+
                 GroupboxLabel = New("TextLabel", {
                     BackgroundTransparency = 1,
-                    Position = UDim2.fromOffset(BoxIcon and 24 or 0, 0),
-                    Size = UDim2.new(1, 0, 0, 34),
+                    Position = UDim2.fromOffset(CardPadding + IconOffset, HeaderTopPadding),
+                    Size = UDim2.new(1, -(CardPadding + IconOffset + LabelRight), 0, 20),
                     Text = Info.Name,
                     TextSize = 15,
                     TextXAlignment = Enum.TextXAlignment.Left,
                     Parent = GroupboxHolder,
                 })
-                New("UIPadding", {
-                    PaddingLeft = UDim.new(0, 12),
-                    PaddingRight = UDim.new(0, 12),
-                    Parent = GroupboxLabel,
-                })
+
+                if HasDescription then
+                    GroupboxDesc = New("TextLabel", {
+                        BackgroundTransparency = 1,
+                        Position = UDim2.fromOffset(CardPadding + IconOffset, HeaderTopPadding + 22),
+                        Size = UDim2.new(1, -(CardPadding + IconOffset + LabelRight), 0, 16),
+                        Text = Info.Description,
+                        TextSize = 13,
+                        TextTransparency = 0.45,
+                        TextXAlignment = Enum.TextXAlignment.Left,
+                        TextWrapped = true,
+                        Parent = GroupboxHolder,
+                    })
+                end
 
                 if Info.DisableCollapsing ~= true then
                     GroupboxCollapseArrow = New("ImageButton", {
@@ -10508,28 +10567,28 @@ function Library:CreateWindow(WindowInfo)
                         ImageRectSize = ArrowIcon and ArrowIcon.ImageRectSize or Vector2.zero,
                         BackgroundTransparency = 1,
                         Rotation = 180,
-                        Position = UDim2.new(1, -(22 + 6), 0, 6),
-                        Size = UDim2.fromOffset(22, 22),
+                        Position = UDim2.new(1, -(20 + CardPadding), 0, HeaderTopPadding),
+                        Size = UDim2.fromOffset(20, 20),
                         Parent = GroupboxHolder,
                     })
                 end
 
                 GroupboxContainer = New("Frame", {
                     BackgroundTransparency = 1,
-                    Position = UDim2.fromOffset(0, 35),
-                    Size = UDim2.new(1, 0, 1, -35),
+                    Position = UDim2.fromOffset(0, HeaderHeight + HeaderBodyGap),
+                    Size = UDim2.new(1, 0, 1, -(HeaderHeight + HeaderBodyGap)),
                     Parent = GroupboxHolder,
                 })
 
                 GroupboxList = New("UIListLayout", {
-                    Padding = UDim.new(0, 8),
+                    Padding = UDim.new(0, 10),
                     Parent = GroupboxContainer,
                 })
                 New("UIPadding", {
-                    PaddingBottom = UDim.new(0, 7),
-                    PaddingLeft = UDim.new(0, 7),
-                    PaddingRight = UDim.new(0, 7),
-                    PaddingTop = UDim.new(0, 7),
+                    PaddingBottom = UDim.new(0, ContainerPadding),
+                    PaddingLeft = UDim.new(0, ContainerPadding),
+                    PaddingRight = UDim.new(0, ContainerPadding),
+                    PaddingTop = UDim.new(0, 0),
                     Parent = GroupboxContainer,
                 })
             end
@@ -10561,9 +10620,8 @@ function Library:CreateWindow(WindowInfo)
                     ResizeTween = nil
                 end
 
-                local TargetSize = UDim2.new(1, 0, 0, if Groupbox.Collapsed then 34 else (GroupboxList.AbsoluteContentSize.Y / Library.DPIScale) + 49)
+                local TargetSize = UDim2.new(1, 0, 0, if Groupbox.Collapsed then HeaderHeight else HeaderHeight + HeaderBodyGap + (GroupboxList.AbsoluteContentSize.Y / Library.DPIScale) + ContainerPadding)
 
-                GroupboxLine.Visible = not Groupbox.Collapsed
                 if Library.Animations and Library.Animations.Groupbox then
                     local TweenInfo = Library.GroupboxTweenInfo or TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
                     local Tween = TweenService:Create(GroupboxHolder, TweenInfo, { Size = TargetSize })
