@@ -2475,10 +2475,14 @@ function Library:AddContextMenu(
             AutomaticCanvasSize = Enum.AutomaticSize.None,
             AutomaticSize = List == 1 and Enum.AutomaticSize.Y or Enum.AutomaticSize.None,
             BackgroundColor3 = "MainColor",
+            BackgroundTransparency = 0.04,
             BottomImage = "rbxasset://textures/ui/Scroll/scroll-middle.png",
             CanvasSize = UDim2.fromOffset(0, 0),
+            ClipsDescendants = true,
             ScrollBarImageColor3 = "OutlineColor",
+            ScrollBarImageTransparency = 0.2,
             ScrollBarThickness = List == 2 and 2 or 0,
+            ScrollingDirection = Enum.ScrollingDirection.Y,
             Size = typeof(Size) == "function" and Size() or Size,
             TopImage = "rbxasset://textures/ui/Scroll/scroll-middle.png",
             Visible = false,
@@ -2500,6 +2504,22 @@ function Library:AddContextMenu(
             Parent = Menu,
         })
     )
+
+    if List then
+        New("UIPadding", {
+            PaddingTop = UDim.new(0, 8),
+            PaddingBottom = UDim.new(0, 8),
+            PaddingLeft = UDim.new(0, 8),
+            PaddingRight = UDim.new(0, 8),
+            Parent = Menu,
+        })
+
+        New("UISizeConstraint", {
+            MinSize = Vector2.new(170, 0),
+            MaxSize = Vector2.new(420, 520),
+            Parent = Menu,
+        })
+    end
 
     New("UIStroke", {
         Color = "OutlineColor",
@@ -2619,37 +2639,44 @@ function Library:AddContextMenu(
         local IsAnimated, TweenInfo = Table.Animated()
         if IsAnimated == true then
             local OpenSize = TargetSize
+
             if Table.AutoSizeY then
-                local FullHeight = Menu.AbsoluteSize.Y
-
                 Menu.AutomaticSize = Enum.AutomaticSize.None
-                OpenSize = UDim2.new(TargetSize.X.Scale, TargetSize.X.Offset, 0, FullHeight)
+                Menu.Size = OpenSize
+            else
+                Menu.Size = OpenSize
             end
-
-            Menu.Size = UDim2.new(OpenSize.X.Scale, OpenSize.X.Offset, 0, 0)
-            Menu.Visible = true
 
             local MenuScale = Menu:FindFirstChildOfClass("UIScale")
             if MenuScale then
-                MenuScale.Scale = 0.985
-                TweenService:Create(MenuScale, TweenInfo, { Scale = 1 }):Play()
+                MenuScale.Scale = 0.96
             end
 
-            local MenuStroke = Menu:FindFirstChildOfClass("UIStroke")
-            if MenuStroke then
-                Menu.BackgroundTransparency = 1
-                TweenService:Create(Menu, TweenInfo, { BackgroundTransparency = 0 }):Play()
+            Menu.BackgroundTransparency = 1
+            Menu.Visible = true
+
+            local ScaleTween
+            if MenuScale then
+                ScaleTween = TweenService:Create(MenuScale, TweenInfo, {
+                    Scale = 1,
+                })
+                ScaleTween:Play()
             end
 
-            local Tween = TweenService:Create(Menu, TweenInfo, { Size = OpenSize })
-            Table.OpenCloseTween = Tween
+            local FadeTween = TweenService:Create(Menu, TweenInfo, {
+                BackgroundTransparency = 0.04,
+            })
+            FadeTween:Play()
 
-            local Connection; Connection = Library:GiveSignal(Tween.Completed:Once(function()
+            Table.OpenCloseTween = ScaleTween or FadeTween
+
+            local Connection
+            Connection = Library:GiveSignal((ScaleTween or FadeTween).Completed:Once(function()
                 if Connection then
                     Connection:Disconnect()
                 end
 
-                if Table.OpenCloseTween == Tween then
+                if Table.OpenCloseTween == (ScaleTween or FadeTween) then
                     StopTween(Table.OpenCloseTween, true)
                     Table.OpenCloseTween = nil
 
@@ -2658,10 +2685,9 @@ function Library:AddContextMenu(
                     end
                 end
             end))
-
-            Tween:Play()
         else
             Menu.Size = TargetSize
+            Menu.BackgroundTransparency = 0.04
             Menu.Visible = true
         end
 
@@ -2712,36 +2738,45 @@ function Library:AddContextMenu(
                 Menu.AutomaticSize = Enum.AutomaticSize.None
             end
 
-            local CurrentSize = Menu.Size
-            local CollapsedSize = UDim2.new(CurrentSize.X.Scale, CurrentSize.X.Offset, 0, 0)
-
             local MenuScale = Menu:FindFirstChildOfClass("UIScale")
+            local ScaleTween
+
             if MenuScale then
-                TweenService:Create(MenuScale, TweenInfo, { Scale = 0.985 }):Play()
+                ScaleTween = TweenService:Create(MenuScale, TweenInfo, {
+                    Scale = 0.96,
+                })
+                ScaleTween:Play()
             end
 
-            TweenService:Create(Menu, TweenInfo, { BackgroundTransparency = 1 }):Play()
+            local FadeTween = TweenService:Create(Menu, TweenInfo, {
+                BackgroundTransparency = 1,
+            })
+            FadeTween:Play()
 
-            local Tween = TweenService:Create(Menu, TweenInfo, { Size = CollapsedSize })
-            Table.OpenCloseTween = Tween
+            Table.OpenCloseTween = ScaleTween or FadeTween
 
-            local Connection; Connection = Library:GiveSignal(Tween.Completed:Once(function(PlaybackState)
+            local Connection
+            Connection = Library:GiveSignal((ScaleTween or FadeTween).Completed:Once(function(PlaybackState)
                 if Connection then
                     Connection:Disconnect()
                 end
 
-                if Table.OpenCloseTween == Tween then
+                if Table.OpenCloseTween == (ScaleTween or FadeTween) then
                     StopTween(Table.OpenCloseTween, true)
                     Table.OpenCloseTween = nil
 
                     Menu.Visible = false
+                    Menu.BackgroundTransparency = 0.04
+
+                    if MenuScale then
+                        MenuScale.Scale = 1
+                    end
+
                     if Table.AutoSizeY then
                         Menu.AutomaticSize = Enum.AutomaticSize.Y
                     end
                 end
             end))
-
-            Tween:Play()
         else
             Menu.Visible = false
         end
@@ -3288,7 +3323,7 @@ do
                 AnchorPoint = Vector2.new(0, 0.5),
                 BackgroundColor3 = "ElevatedColor",
                 Position = UDim2.fromScale(0, 0.5),
-                Size = UDim2.fromOffset(14, 14),
+                Size = UDim2.fromOffset(15, 15),
                 SizeConstraint = Enum.SizeConstraint.RelativeYY,
                 Parent = Holder,
             })
@@ -7081,7 +7116,7 @@ do
                 return UDim2.fromOffset((DisplayContainer.AbsoluteSize.X / Library.DPIScale), 0)
             end,
             function()
-                return { 0.5, DisplayContainer.AbsoluteSize.Y + 1.5 }
+                return { 0, DisplayContainer.AbsoluteSize.Y + 6 }
             end,
             2,
             function(Active: boolean)
@@ -7132,19 +7167,25 @@ do
             end)
         end))
 
-        local ItemHeight = Library.IsMobile and 46 or 40
+        local ItemHeight = Library.IsMobile and 44 or 36
         local PoolSize = math.max(1, Info.MaxVisibleDropdownItems + 2)
         local Pool = {}
         local FilteredEntries = {}
 
         function Dropdown:RecalculateListSize(Count)
             local ItemCount = Count or #FilteredEntries
-            local Y = math.clamp(ItemCount * ItemHeight, 0, Info.MaxVisibleDropdownItems * ItemHeight)
+            local Padding = 16
+            local MaxHeight = (Info.MaxVisibleDropdownItems * ItemHeight) + Padding
+            local Y = math.clamp((ItemCount * ItemHeight) + Padding, 0, MaxHeight)
 
-            MenuTable.Menu.CanvasSize = UDim2.fromOffset(0, ItemCount * ItemHeight)
+            MenuTable.Menu.CanvasSize = UDim2.fromOffset(0, (ItemCount * ItemHeight) + Padding)
 
             MenuTable:SetSize(function()
-                return UDim2.fromOffset((DisplayContainer.AbsoluteSize.X / Library.DPIScale), Y)
+                local Width = math.max(
+                    170,
+                    DisplayContainer.AbsoluteSize.X / Library.DPIScale
+                )
+                return UDim2.fromOffset(Width, Y)
             end)
         end
 
@@ -7453,13 +7494,13 @@ do
             local Container = New("Frame", {
                 BackgroundColor3 = "AccentColor",
                 BackgroundTransparency = 1,
-                Size = UDim2.new(1, -12, 0, ItemHeight - 4),
+                Size = UDim2.new(1, 0, 0, ItemHeight),
                 Visible = false,
                 Parent = MenuTable.Menu,
             })
 
             local Corner = New("UICorner", {
-                CornerRadius = UDim.new(0, 8),
+                CornerRadius = UDim.new(0, 7),
                 Parent = Container,
             }); table.insert(Library.Corners, Corner)
 
@@ -7468,7 +7509,7 @@ do
                 Image = "",
                 ImageTransparency = 0.5,
                 Size = UDim2.fromOffset(16, 16),
-                Position = UDim2.fromOffset(6, (ItemHeight - 4 - 16) / 2),
+                Position = UDim2.fromOffset(7, (ItemHeight - 16) / 2),
                 Visible = false,
                 Parent = Container,
             })
@@ -7479,7 +7520,7 @@ do
                 Image = CustomImageManager.GetAsset("CheckIcon"),
                 ImageColor3 = "AccentColor",
                 ImageTransparency = 1,
-                Position = UDim2.new(1, -7, 0.5, 0),
+                Position = UDim2.new(1, -9, 0.5, 0),
                 Size = UDim2.fromOffset(14, 14),
                 ZIndex = 3,
                 Parent = Container,
@@ -7497,8 +7538,8 @@ do
                 Parent = Container,
             })
             New("UIPadding", {
-                PaddingLeft = UDim.new(0, 9),
-                PaddingRight = UDim.new(0, 30),
+                PaddingLeft = UDim.new(0, 10),
+                PaddingRight = UDim.new(0, 34),
                 Parent = Button,
             })
 
@@ -7521,12 +7562,18 @@ do
                     Selected = Dropdown.Value == Entry.Value
                 end
 
-                Container.BackgroundColor3 = Selected and Library:GetBetterColor(Library.Scheme.ElevatedColor, 4) or Library.Scheme.ElevatedColor
-                Container.BackgroundTransparency = Selected and 0.15 or 1
-                Button.TextTransparency = Entry.IsDisabled and 0.8 or Selected and 0.05 or 0.35
-                Button.Font = Entry.IsDisabled and Button.Font or (Selected and Enum.Font.SourceSansBold or Enum.Font.SourceSans)
+                Container.BackgroundColor3 = Selected
+                    and Library:GetBetterColor(Library.Scheme.AccentColor, -2)
+                    or Library.Scheme.ElevatedColor
+                Container.BackgroundTransparency = Selected and 0.82 or 1
+                Button.TextTransparency = Entry.IsDisabled and 0.72 or Selected and 0 or 0.22
+                Button.Font = Entry.IsDisabled and Enum.Font.SourceSans or (Selected and Enum.Font.SourceSansSemibold or Enum.Font.SourceSans)
+                TweenService:Create(Container, Library.TweenInfo, {
+                    BackgroundTransparency = Selected and 0.82 or 1,
+                }):Play()
                 TweenService:Create(SelectionIndicator, Library.TweenInfo, {
                     ImageTransparency = Selected and 0 or 1,
+                    Size = Selected and UDim2.fromOffset(16, 16) or UDim2.fromOffset(14, 14),
                 }):Play()
 
                 if Entry.ValueImage then
@@ -7546,8 +7593,11 @@ do
                 end
 
                 if not Selected then
-                    TweenService:Create(Container, Library.TweenInfo, { BackgroundTransparency = 0.08, BackgroundColor3 = Library:GetBetterColor(Library.Scheme.ElevatedColor, 7) }):Play()
-                    TweenService:Create(Button, Library.TweenInfo, { TextTransparency = 0.05 }):Play()
+                    TweenService:Create(Container, Library.TweenInfo, {
+                        BackgroundTransparency = 0.9,
+                        BackgroundColor3 = Library:GetBetterColor(Library.Scheme.ElevatedColor, 8),
+                    }):Play()
+                    TweenService:Create(Button, Library.TweenInfo, { TextTransparency = 0.04 }):Play()
                 end
             end)
             Button.MouseLeave:Connect(function()
@@ -7562,24 +7612,15 @@ do
                 end
 
                 if not Selected then
-                    TweenService:Create(Container, Library.TweenInfo, { BackgroundTransparency = 1, BackgroundColor3 = Library.Scheme.ElevatedColor }):Play()
-                    TweenService:Create(Button, Library.TweenInfo, { TextTransparency = Entry.IsDisabled and 0.8 or 0.35 }):Play()
+                    TweenService:Create(Container, Library.TweenInfo, {
+                        BackgroundTransparency = 1,
+                        BackgroundColor3 = Library.Scheme.ElevatedColor,
+                    }):Play()
+                    TweenService:Create(Button, Library.TweenInfo, {
+                        TextTransparency = Entry.IsDisabled and 0.72 or 0.22,
+                    }):Play()
                 end
             end)
-            Button.MouseButton1Down:Connect(function()
-                local Entry = Row.Entry
-                if not Entry or Entry.IsDisabled then return end
-
-                TweenService:Create(Container, Library.TweenInfo, {
-                    Size = UDim2.new(1, -18, 0, ItemHeight - 8),
-                }):Play()
-            end)
-            Button.MouseButton1Up:Connect(function()
-                TweenService:Create(Container, Library.TweenInfo, {
-                    Size = UDim2.new(1, -12, 0, ItemHeight - 4),
-                }):Play()
-            end)
-
             Button.MouseButton1Click:Connect(function()
                 local Entry = Row.Entry
                 if not Entry or Entry.IsDisabled or DragSelecting then
@@ -9831,7 +9872,7 @@ function Library:CreateWindow(WindowInfo)
         })
 
         --// Top Right Bar \\--
-        local ControlReserve = Library.IsMobile and 49 or 116
+        local ControlReserve = Library.IsMobile and 49 or 112
         RightWrapper = New("Frame", {
             AnchorPoint = Vector2.new(1, 0.5),
             BackgroundTransparency = 1,
@@ -9939,20 +9980,6 @@ function Library:CreateWindow(WindowInfo)
                 Size = UDim2.fromScale(1, 1),
                 SizeConstraint = Enum.SizeConstraint.RelativeYY,
                 Parent = SearchBox,
-            })
-        end
-
-        if MoveIcon then
-            New("ImageLabel", {
-                AnchorPoint = Vector2.new(1, 0.5),
-                Image = MoveIcon.Url,
-                ImageColor3 = "OutlineColor",
-                ImageRectOffset = MoveIcon.ImageRectOffset,
-                ImageRectSize = MoveIcon.ImageRectSize,
-                Position = UDim2.new(1, -10, 0.5, 0),
-                Size = UDim2.fromOffset(28, 28),
-                SizeConstraint = Enum.SizeConstraint.RelativeYY,
-                Parent = TopBar,
             })
         end
 
@@ -10101,8 +10128,8 @@ function Library:CreateWindow(WindowInfo)
                 AnchorPoint = Vector2.new(0.5, 1),
                 BackgroundColor3 = "AccentColor",
                 BackgroundTransparency = 0,
-                Position = UDim2.new(0.5, 0, 1, -20),
-                Size = UDim2.fromOffset(56, 56),
+                Position = UDim2.new(0.5, 0, 1, -28),
+                Size = UDim2.fromOffset(52, 52),
                 Text = "",
                 AutoButtonColor = false,
                 Visible = false,
@@ -10112,7 +10139,8 @@ function Library:CreateWindow(WindowInfo)
             table.insert(Library.Corners, New("UICorner", { CornerRadius = UDim.new(1, 0), Parent = MobileRestoreButton }))
             New("UIStroke", {
                 Color = "AccentColor",
-                Thickness = 2,
+                Thickness = 1,
+                Transparency = 0.25,
                 Parent = MobileRestoreButton,
             })
             if RestoreIcon then
@@ -10124,11 +10152,31 @@ function Library:CreateWindow(WindowInfo)
                     ImageRectOffset = RestoreIcon.ImageRectOffset,
                     ImageRectSize = RestoreIcon.ImageRectSize,
                     Position = UDim2.fromScale(0.5, 0.5),
-                    Size = UDim2.fromOffset(24, 24),
+                    Size = UDim2.fromOffset(22, 22),
                     Parent = MobileRestoreButton,
                 })
             end
             Library:MakeDraggable(MobileRestoreButton, MobileRestoreButton, true)
+            MobileRestoreButton.MouseEnter:Connect(function()
+                TweenService:Create(MobileRestoreButton, Library.TweenInfo, {
+                    Size = UDim2.fromOffset(56, 56),
+                }):Play()
+            end)
+            MobileRestoreButton.MouseLeave:Connect(function()
+                TweenService:Create(MobileRestoreButton, Library.TweenInfo, {
+                    Size = UDim2.fromOffset(52, 52),
+                }):Play()
+            end)
+            MobileRestoreButton.MouseButton1Down:Connect(function()
+                TweenService:Create(MobileRestoreButton, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                    Size = UDim2.fromOffset(48, 48),
+                }):Play()
+            end)
+            MobileRestoreButton.MouseButton1Up:Connect(function()
+                TweenService:Create(MobileRestoreButton, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+                    Size = UDim2.fromOffset(56, 56),
+                }):Play()
+            end)
             MobileRestoreButton.MouseButton1Click:Connect(function()
                 Window:Restore()
             end)
@@ -10413,10 +10461,7 @@ function Library:CreateWindow(WindowInfo)
         IsMaximized = false,
         PreviousSize = MainFrame.Size,
         PreviousPosition = MainFrame.Position,
-        MinimizedSize = UDim2.new(0, MainFrame.Size.X.Offset, 0, 48),
     }
-
-    local MinimizedHeight = 48
 
     local function SetWindowControlIcon(IconLabel, Icon)
         if not IconLabel or not Icon then return end
@@ -10438,45 +10483,22 @@ function Library:CreateWindow(WindowInfo)
             return
         end
 
-        -- Save the current normal state before collapsing. Maximized state is
-        -- restored to the normal window first so minimize never overwrites the
-        -- user's saved normal dimensions.
-        if WindowState.IsMaximized then
-            self:Maximize()
-            task.wait(Library.WindowAnimationInfo.Time)
-        end
-
         WindowState.PreviousSize = MainFrame.Size
         WindowState.PreviousPosition = MainFrame.Position
-        WindowState.IsMinimized = true
+
+        -- Only mobile needs a dedicated minimized state because it gets a
+        -- floating restore button. On desktop minimize is simply the normal
+        -- visibility toggle, matching the requested behavior.
+        WindowState.IsMinimized = Library.IsMobile
         WindowState.IsMaximized = false
 
-        local TargetSize = UDim2.new(
-            WindowState.PreviousSize.X.Scale,
-            WindowState.PreviousSize.X.Offset,
-            0,
-            MinimizedHeight
-        )
-
-        local Tween = TweenService:Create(MainFrame, Library.WindowAnimationInfo, {
-            Size = TargetSize,
-        })
-        Tween:Play()
-
-        -- Keep the top bar and controls alive so minimize/maximize/close always
-        -- remain usable. Hide only the window body.
-        if Tabs then Tabs.Visible = false end
-        if Container then Container.Visible = false end
-        if BottomBackground then BottomBackground.Visible = false end
-        if FooterLabel then FooterLabel.Visible = false end
-        if ResizeButton then ResizeButton.Visible = false end
+        -- Minimize should behave like WindUI: the entire window disappears.
+        -- Desktop restores through the normal toggle key; mobile gets a
+        -- dedicated floating restore button.
+        Library:Toggle(false)
 
         if MobileRestoreButton then
-            MobileRestoreButton.Visible = false
-        end
-
-        if WindowInfo.UnlockMouseWhileOpen then
-            ModalElement.Modal = true
+            MobileRestoreButton.Visible = true
         end
 
         UpdateWindowControls()
@@ -10504,8 +10526,7 @@ function Library:CreateWindow(WindowInfo)
             return
         end
 
-        -- If minimized, this acts as Restore rather than trying to maximize a
-        -- collapsed 48px-high frame.
+        -- If the mobile window is minimized, maximize acts as Restore first.
         if WindowState.IsMinimized then
             return self:Restore()
         end
@@ -10537,38 +10558,27 @@ function Library:CreateWindow(WindowInfo)
     end
 
     function Window:Close()
-        -- Close behaves like the library's normal visibility toggle, but unlike
-        -- minimize it completely hides the window and releases modal input.
-        if WindowState.IsMinimized then
-            WindowState.IsMinimized = false
-        end
-        Library:Toggle(false)
+        WindowState.IsMinimized = false
+        WindowState.IsMaximized = false
 
         if MobileRestoreButton then
             MobileRestoreButton.Visible = false
         end
+
+        Library:Toggle(false)
+        UpdateWindowControls()
     end
 
     function Window:Restore()
         if not WindowState.IsMinimized then
             Library:Toggle(true)
+            if MobileRestoreButton then
+                MobileRestoreButton.Visible = false
+            end
             return
         end
 
         WindowState.IsMinimized = false
-
-        if Tabs then Tabs.Visible = true end
-        if Container then Container.Visible = true end
-        if BottomBackground then BottomBackground.Visible = true end
-        if FooterLabel then FooterLabel.Visible = true end
-        if ResizeButton then ResizeButton.Visible = true end
-
-        local TargetSize = WindowState.PreviousSize or UDim2.fromOffset(720, 600)
-        local Tween = TweenService:Create(MainFrame, Library.WindowAnimationInfo, {
-            Size = TargetSize,
-            Position = WindowState.PreviousPosition or MainFrame.Position,
-        })
-        Tween:Play()
 
         if MobileRestoreButton then
             MobileRestoreButton.Visible = false
