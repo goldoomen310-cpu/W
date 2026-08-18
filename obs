@@ -5452,6 +5452,7 @@ do
                 return
             end
 
+            local Changed = Toggle.Value ~= Value
             Toggle.Value = Value
             Toggle:Display()
 
@@ -5464,7 +5465,7 @@ do
 
             Library:UpdateDependencyBoxes()
 
-            if not Toggle.AnyKeyPickerPicking then
+            if Changed and not Toggle.AnyKeyPickerPicking then
                 Toggle:RunChanged()
             end
         end
@@ -5827,6 +5828,7 @@ do
                 return
             end
 
+            local Changed = Toggle.Value ~= Value
             Toggle.Value = Value
             Toggle:Display()
 
@@ -5839,7 +5841,7 @@ do
 
             Library:UpdateDependencyBoxes()
 
-            if not Toggle.AnyKeyPickerPicking then
+            if Changed and not Toggle.AnyKeyPickerPicking then
                 Toggle:RunChanged()
             end
         end
