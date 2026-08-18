@@ -1874,9 +1874,23 @@ function Library:PlayTabAnimation(TabCanvas: CanvasGroup, Showing: boolean, OnCo
     end
 
     local BaseZIndex = TabCanvas.ZIndex
+
+    if not Showing then
+        -- Hiding is instant and untweened on purpose. The incoming tab plays its
+        -- own entrance animation immediately after this returns; if the outgoing
+        -- tab lingered on screen fading out at the same time, both tabs' content
+        -- would render simultaneously and visually overlap/bleed into each other.
+        TabCanvas.Visible = false
+        TabCanvas.GroupTransparency = 1
+        TabCanvas.Position = UDim2.fromScale(0, 0)
+        TabCanvas.ZIndex = BaseZIndex
+        if OnComplete then OnComplete() end
+        return
+    end
+
     if not (Library.Animations and Library.Animations.TabSwitch) then
-        TabCanvas.Visible = Showing
-        TabCanvas.GroupTransparency = Showing and 0 or 1
+        TabCanvas.Visible = true
+        TabCanvas.GroupTransparency = 0
         TabCanvas.Position = UDim2.fromScale(0, 0)
         TabCanvas.ZIndex = BaseZIndex
         if OnComplete then OnComplete() end
@@ -1884,67 +1898,50 @@ function Library:PlayTabAnimation(TabCanvas: CanvasGroup, Showing: boolean, OnCo
     end
 
     local Duration = Library.TabTransitionTime or 0.16
-    local TweenInfo = TweenInfo.new(Duration, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
-    local EnterOffset = math.min(math.abs(Library.TabSwipeOffset or 8), 12)
+    local EnterOffset = math.min(math.abs(Library.TabSwipeOffset or 8), 14)
 
-    if Showing then
-        -- Clean cross-fade with only a tiny movement. Large tab slides make the
-        -- entire UI appear to jump, especially on compact/mobile layouts.
-        TabCanvas.ZIndex = BaseZIndex + 1
-        TabCanvas.Position = UDim2.fromOffset(0, EnterOffset)
-        TabCanvas.GroupTransparency = 0.35
-        TabCanvas.Visible = true
+    -- Position and fade are tweened separately and with different easing styles.
+    -- Back-out overshoots past its target, and if that overshoot were applied to
+    -- GroupTransparency the value would briefly clamp outside 0-1 and pop/flicker.
+    -- Position can safely overshoot (it just reads as a little bounce); the fade
+    -- uses a plain, non-overshooting curve so opacity always moves smoothly.
+    local PositionTweenInfo = TweenInfo.new(Duration, Enum.EasingStyle.Back, Enum.EasingDirection.Out)
+    local FadeTweenInfo = TweenInfo.new(Duration * 0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
 
-        local Tween = TweenService:Create(TabCanvas, TweenInfo, {
-            GroupTransparency = 0,
-            Position = UDim2.fromScale(0, 0),
-        })
-        ActiveTabTweens[TabCanvas] = Tween
-        Tween:Play()
+    TabCanvas.ZIndex = BaseZIndex
+    TabCanvas.Position = UDim2.fromOffset(0, EnterOffset)
+    TabCanvas.GroupTransparency = 0.25
+    TabCanvas.Visible = true
 
-        local Connection
-        Connection = Tween.Completed:Connect(function(State)
-            Connection:Disconnect()
-            if ActiveTabTweens[TabCanvas] ~= Tween then
-                return
-            end
-            ActiveTabTweens[TabCanvas] = nil
-            if State ~= Enum.PlaybackState.Cancelled then
-                TabCanvas.ZIndex = BaseZIndex
-                TabCanvas.Position = UDim2.fromScale(0, 0)
-                TabCanvas.GroupTransparency = 0
-                if OnComplete then OnComplete() end
-            end
-        end)
-    else
-        -- Fade out in place. Do not slide the old tab because it produces a
-        -- noticeable horizontal/vertical jump while the next tab enters.
-        TabCanvas.Visible = true
-        TabCanvas.ZIndex = BaseZIndex
-        TabCanvas.Position = UDim2.fromScale(0, 0)
-        TabCanvas.GroupTransparency = 0
+    local PositionTween = TweenService:Create(TabCanvas, PositionTweenInfo, {
+        Position = UDim2.fromScale(0, 0),
+    })
+    local FadeTween = TweenService:Create(TabCanvas, FadeTweenInfo, {
+        GroupTransparency = 0,
+    })
 
-        local Tween = TweenService:Create(TabCanvas, TweenInfo, {
-            GroupTransparency = 1,
-        })
-        ActiveTabTweens[TabCanvas] = Tween
-        Tween:Play()
+    ActiveTabTweens[TabCanvas] = PositionTween
+    PositionTween:Play()
+    FadeTween:Play()
 
-        local Connection
-        Connection = Tween.Completed:Connect(function(State)
-            Connection:Disconnect()
-            if ActiveTabTweens[TabCanvas] ~= Tween then
-                return
-            end
-            ActiveTabTweens[TabCanvas] = nil
-            if State ~= Enum.PlaybackState.Cancelled then
-                TabCanvas.Visible = false
-                TabCanvas.Position = UDim2.fromScale(0, 0)
-                TabCanvas.GroupTransparency = 0
-                if OnComplete then OnComplete() end
-            end
-        end)
-    end
+    local Connection
+    Connection = PositionTween.Completed:Connect(function(State)
+        Connection:Disconnect()
+        if FadeTween then
+            StopTween(FadeTween, true)
+        end
+
+        if ActiveTabTweens[TabCanvas] ~= PositionTween then
+            return
+        end
+        ActiveTabTweens[TabCanvas] = nil
+
+        if State ~= Enum.PlaybackState.Cancelled then
+            TabCanvas.Position = UDim2.fromScale(0, 0)
+            TabCanvas.GroupTransparency = 0
+            if OnComplete then OnComplete() end
+        end
+    end)
 end
 
 --// Deprecated \\--
@@ -7156,6 +7153,15 @@ do
         )
         Dropdown.Menu = MenuTable
 
+        -- Soft depth cue around the open list so it reads as a raised surface
+        -- rather than a flat panel sitting directly on the background.
+        New("UIStroke", {
+            Color = "DarkColor",
+            Thickness = 3,
+            Transparency = 0.85,
+            Parent = MenuTable.Menu,
+        })
+
         -- Hover animations for Dropdown display
         table.insert(Dropdown.Connections, DisplayContainer.MouseEnter:Connect(function()
             if Dropdown.Disabled then return end
@@ -7186,6 +7192,8 @@ do
 
         local ItemHeight = Library.IsMobile and 44 or 36
         local PoolSize = math.max(1, Info.MaxVisibleDropdownItems + 2)
+        local RowInset = 8
+        local RowGap = 3
         local Pool = {}
         local FilteredEntries = {}
 
@@ -7261,6 +7269,13 @@ do
             end
 
             DisplayButton.Text = (Str == "" and "---" or Str)
+
+            local HasSelection = Str ~= ""
+            TweenService:Create(DisplayContainer, Library.TweenInfo, {
+                BackgroundColor3 = HasSelection
+                    and Library:GetBetterColor(Library.Scheme.AccentColor, -6)
+                    or Library.Scheme.ElevatedColor,
+            }):Play()
             
             if ValueImage then
                 DisplayImage.Image = ValueImage.Url
@@ -7388,7 +7403,7 @@ do
                 end
 
                 Row.Container.Visible = true
-                Row.Container.Position = UDim2.fromOffset(6, (DataIndex - 1) * ItemHeight + 2)
+                Row.Container.Position = UDim2.fromOffset(RowInset, (DataIndex - 1) * ItemHeight + 2 + RowGap / 2)
 
                 Row.Button.Text = Entry.FormattedValue
 
@@ -7509,17 +7524,23 @@ do
             }
 
             local Container = New("Frame", {
-                BackgroundColor3 = "AccentColor",
-                BackgroundTransparency = 1,
-                Size = UDim2.new(1, 0, 0, ItemHeight),
+                BackgroundColor3 = "ElevatedColor",
+                BackgroundTransparency = 0.94,
+                Size = UDim2.new(1, -(RowInset * 2), 0, ItemHeight - RowGap),
                 Visible = false,
                 Parent = MenuTable.Menu,
             })
 
             local Corner = New("UICorner", {
-                CornerRadius = UDim.new(0, 7),
+                CornerRadius = UDim.new(0, 9),
                 Parent = Container,
             }); table.insert(Library.Corners, Corner)
+
+            local ContainerStroke = New("UIStroke", {
+                Color = "OutlineColor",
+                Transparency = 0.75,
+                Parent = Container,
+            })
 
             local Image = New("ImageLabel", {
                 BackgroundTransparency = 1,
@@ -7599,11 +7620,15 @@ do
                 Container.BackgroundColor3 = Selected
                     and Library:GetBetterColor(Library.Scheme.AccentColor, -2)
                     or Library.Scheme.ElevatedColor
-                Container.BackgroundTransparency = Selected and 0.82 or 1
+                Container.BackgroundTransparency = Selected and 0.82 or 0.94
                 Button.TextTransparency = Entry.IsDisabled and 0.72 or Selected and 0 or 0.22
                 Button.Font = Entry.IsDisabled and Enum.Font.SourceSans or (Selected and Enum.Font.SourceSansSemibold or Enum.Font.SourceSans)
                 TweenService:Create(Container, Library.TweenInfo, {
-                    BackgroundTransparency = Selected and 0.82 or 1,
+                    BackgroundTransparency = Selected and 0.82 or 0.94,
+                }):Play()
+                TweenService:Create(ContainerStroke, Library.TweenInfo, {
+                    Color = Selected and Library.Scheme.AccentColor or Library.Scheme.OutlineColor,
+                    Transparency = Selected and 0.15 or 0.75,
                 }):Play()
                 TweenService:Create(SelectionIndicator, Library.TweenInfo, {
                     ImageTransparency = Selected and 0 or 1,
@@ -7631,8 +7656,11 @@ do
 
                 if not Selected then
                     TweenService:Create(Container, Library.TweenInfo, {
-                        BackgroundTransparency = 0.9,
+                        BackgroundTransparency = 0.88,
                         BackgroundColor3 = Library:GetBetterColor(Library.Scheme.ElevatedColor, 8),
+                    }):Play()
+                    TweenService:Create(ContainerStroke, Library.TweenInfo, {
+                        Transparency = 0.4,
                     }):Play()
                     TweenService:Create(Button, Library.TweenInfo, { TextTransparency = 0.04 }):Play()
                 end
@@ -7650,8 +7678,11 @@ do
 
                 if not Selected then
                     TweenService:Create(Container, Library.TweenInfo, {
-                        BackgroundTransparency = 1,
+                        BackgroundTransparency = 0.94,
                         BackgroundColor3 = Library.Scheme.ElevatedColor,
+                    }):Play()
+                    TweenService:Create(ContainerStroke, Library.TweenInfo, {
+                        Transparency = 0.75,
                     }):Play()
                     TweenService:Create(Button, Library.TweenInfo, {
                         TextTransparency = Entry.IsDisabled and 0.72 or 0.22,
