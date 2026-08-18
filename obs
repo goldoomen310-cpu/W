@@ -2465,7 +2465,8 @@ function Library:AddContextMenu(
 )
     local Menu
     local ParentGui = Holder:FindFirstAncestorOfClass("ScreenGui")
-    local MenuZIndex = math.max(10, Holder.ZIndex + 1)
+    -- Floating menus must sit above the window's top-bar controls (ZIndex 50-52).
+    local MenuZIndex = math.max(1500, Holder.ZIndex + 1)
     if ParentGui ~= ScreenGui and (Library.ActiveLoading and ParentGui ~= Library.ActiveLoading.ScreenGui) then
         ParentGui = ScreenGui
     end
@@ -2932,7 +2933,7 @@ local TooltipLabel = New("TextLabel", {
     TextSize = 14,
     TextWrapped = true,
     Visible = false,
-    ZIndex = 20,
+    ZIndex = 1700,
     Parent = ScreenGui,
 })
 New("UIPadding", {
@@ -9313,7 +9314,7 @@ function Library:Notify(...)
         BackgroundColor3 = "MainColor",
         Position = Library.NotifySide:lower() == "left" and UDim2.new(-1, -8, 0, -2) or UDim2.new(1, 8, 0, -2),
         Size = UDim2.fromScale(1, 1),
-        ZIndex = 5,
+        ZIndex = 1600,
         Parent = FakeBackground,
     })
     table.insert(
@@ -10277,63 +10278,16 @@ function Library:CreateWindow(WindowInfo)
         end
 
         --// Mobile Restore Button (shows when minimized) \\--
+        -- Uses the original Obsidian-style draggable "Toggle" pill button, which
+        -- is much friendlier on mobile than a floating circle.
         if Library.IsMobile then
-            MobileRestoreButton = New("TextButton", {
-                AnchorPoint = Vector2.new(0.5, 1),
-                BackgroundColor3 = "AccentColor",
-                BackgroundTransparency = 0,
-                Position = UDim2.new(0.5, 0, 1, -28),
-                Size = UDim2.fromOffset(52, 52),
-                Text = "",
-                AutoButtonColor = false,
-                Visible = false,
-                ZIndex = 100,
-                Parent = ScreenGui,
-            })
-            table.insert(Library.Corners, New("UICorner", { CornerRadius = UDim.new(1, 0), Parent = MobileRestoreButton }))
-            New("UIStroke", {
-                Color = "AccentColor",
-                Thickness = 1,
-                Transparency = 0.25,
-                Parent = MobileRestoreButton,
-            })
-            if RestoreIcon then
-                New("ImageLabel", {
-                    AnchorPoint = Vector2.new(0.5, 0.5),
-                    BackgroundTransparency = 1,
-                    Image = RestoreIcon.Url,
-                    ImageColor3 = "FontColor",
-                    ImageRectOffset = RestoreIcon.ImageRectOffset,
-                    ImageRectSize = RestoreIcon.ImageRectSize,
-                    Position = UDim2.fromScale(0.5, 0.5),
-                    Size = UDim2.fromOffset(22, 22),
-                    Parent = MobileRestoreButton,
-                })
-            end
-            Library:MakeDraggable(MobileRestoreButton, MobileRestoreButton, true)
-            MobileRestoreButton.MouseEnter:Connect(function()
-                TweenService:Create(MobileRestoreButton, Library.TweenInfo, {
-                    Size = UDim2.fromOffset(56, 56),
-                }):Play()
-            end)
-            MobileRestoreButton.MouseLeave:Connect(function()
-                TweenService:Create(MobileRestoreButton, Library.TweenInfo, {
-                    Size = UDim2.fromOffset(52, 52),
-                }):Play()
-            end)
-            MobileRestoreButton.MouseButton1Down:Connect(function()
-                TweenService:Create(MobileRestoreButton, TweenInfo.new(0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                    Size = UDim2.fromOffset(48, 48),
-                }):Play()
-            end)
-            MobileRestoreButton.MouseButton1Up:Connect(function()
-                TweenService:Create(MobileRestoreButton, TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
-                    Size = UDim2.fromOffset(56, 56),
-                }):Play()
-            end)
-            MobileRestoreButton.MouseButton1Click:Connect(function()
+            local MobileToggleButton = Library:AddDraggableButton("Toggle", function()
                 Window:Restore()
-            end)
+            end, true, true)
+
+            MobileRestoreButton = MobileToggleButton.Button
+            MobileRestoreButton.Visible = false
+            MobileRestoreButton.ZIndex = 2000
         end
 
         --// Bottom Bar \\--
