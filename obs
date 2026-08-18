@@ -1277,6 +1277,10 @@ function Library:Validate(Table: { [string]: any }, Template: { [string]: any })
         end
     end
 
+    if Table.Description == nil and typeof(Table.Tooltip) == "string" then
+        Table.Description = Table.Tooltip
+    end
+
     return Table
 end
 
@@ -2706,53 +2710,27 @@ function Library:AddContextMenu(
         local IsAnimated, TweenInfo = Table.Animated()
         if IsAnimated == true then
             local OpenSize = TargetSize
-            local RestPosition = Menu.Position
-
             if Table.AutoSizeY then
+                local FullHeight = Menu.AbsoluteSize.Y
+
                 Menu.AutomaticSize = Enum.AutomaticSize.None
-                Menu.Size = OpenSize
-            else
-                Menu.Size = OpenSize
+                OpenSize = UDim2.new(TargetSize.X.Scale, TargetSize.X.Offset, 0, FullHeight)
             end
 
-            local MenuScale = Menu:FindFirstChildOfClass("UIScale")
-            if MenuScale then
-                MenuScale.Scale = AnimationType == "Dropdown" and 0.92 or 0.96
-            end
-
-            local EnterOffset = AnimationType == "Dropdown" and -8 or 0
-            Menu.Position = RestPosition + UDim2.fromOffset(0, EnterOffset)
-
-            Menu.BackgroundTransparency = 1
+            Menu.BackgroundTransparency = 0.04
+            Menu.Size = UDim2.new(OpenSize.X.Scale, OpenSize.X.Offset, 0, 0)
             Menu.Visible = true
 
-            if EnterOffset ~= 0 then
-                local PositionTween = TweenService:Create(Menu, TweenInfo, { Position = RestPosition })
-                PositionTween:Play()
-            end
-
-            local ScaleTween
-            if MenuScale then
-                ScaleTween = TweenService:Create(MenuScale, TweenInfo, {
-                    Scale = 1,
-                })
-                ScaleTween:Play()
-            end
-
-            local FadeTween = TweenService:Create(Menu, TweenInfo, {
-                BackgroundTransparency = 0.04,
-            })
-            FadeTween:Play()
-
-            Table.OpenCloseTween = ScaleTween or FadeTween
+            local Tween = TweenService:Create(Menu, TweenInfo, { Size = OpenSize })
+            Table.OpenCloseTween = Tween
 
             local Connection
-            Connection = Library:GiveSignal((ScaleTween or FadeTween).Completed:Once(function()
+            Connection = Library:GiveSignal(Tween.Completed:Once(function()
                 if Connection then
                     Connection:Disconnect()
                 end
 
-                if Table.OpenCloseTween == (ScaleTween or FadeTween) then
+                if Table.OpenCloseTween == Tween then
                     StopTween(Table.OpenCloseTween, true)
                     Table.OpenCloseTween = nil
 
@@ -2761,6 +2739,8 @@ function Library:AddContextMenu(
                     end
                 end
             end))
+
+            Tween:Play()
         else
             Menu.Size = TargetSize
             Menu.BackgroundTransparency = 0.04
@@ -2823,45 +2803,32 @@ function Library:AddContextMenu(
                 Menu.AutomaticSize = Enum.AutomaticSize.None
             end
 
-            local MenuScale = Menu:FindFirstChildOfClass("UIScale")
-            local ScaleTween
+            local CurrentSize = Menu.Size
+            local CollapsedSize = UDim2.new(CurrentSize.X.Scale, CurrentSize.X.Offset, 0, 0)
 
-            if MenuScale then
-                ScaleTween = TweenService:Create(MenuScale, TweenInfo, {
-                    Scale = 0.96,
-                })
-                ScaleTween:Play()
-            end
-
-            local FadeTween = TweenService:Create(Menu, TweenInfo, {
-                BackgroundTransparency = 1,
-            })
-            FadeTween:Play()
-
-            Table.OpenCloseTween = ScaleTween or FadeTween
+            local Tween = TweenService:Create(Menu, TweenInfo, { Size = CollapsedSize })
+            Table.OpenCloseTween = Tween
 
             local Connection
-            Connection = Library:GiveSignal((ScaleTween or FadeTween).Completed:Once(function(PlaybackState)
+            Connection = Library:GiveSignal(Tween.Completed:Once(function(PlaybackState)
                 if Connection then
                     Connection:Disconnect()
                 end
 
-                if Table.OpenCloseTween == (ScaleTween or FadeTween) then
+                if Table.OpenCloseTween == Tween then
                     StopTween(Table.OpenCloseTween, true)
                     Table.OpenCloseTween = nil
 
                     Menu.Visible = false
                     Menu.BackgroundTransparency = 0.04
 
-                    if MenuScale then
-                        MenuScale.Scale = 1
-                    end
-
                     if Table.AutoSizeY then
                         Menu.AutomaticSize = Enum.AutomaticSize.Y
                     end
                 end
             end))
+
+            Tween:Play()
         else
             Menu.Visible = false
         end
@@ -2977,90 +2944,13 @@ end)
 
 local CurrentHoverInstance
 function Library:AddTooltip(InfoStr: string, DisabledInfoStr: string, HoverInstance: GuiObject)
-    local TooltipTable = {
+    return {
         Disabled = false,
         Hovering = false,
         Signals = {},
+        Destroy = function()
+        end,
     }
-
-    local function DoHover()
-        if
-            CurrentHoverInstance == HoverInstance
-            or Library.ActiveDialog
-            or (CurrentMenu and Library:MouseIsOverFrame(CurrentMenu.Menu, Mouse))
-            or (TooltipTable.Disabled and typeof(DisabledInfoStr) ~= "string")
-            or (not TooltipTable.Disabled and typeof(InfoStr) ~= "string")
-        then
-            return
-        end
-        CurrentHoverInstance = HoverInstance
-
-        local ParentGui = HoverInstance:FindFirstAncestorOfClass("ScreenGui")
-        if ParentGui ~= ScreenGui and (Library.ActiveLoading and ParentGui ~= Library.ActiveLoading.ScreenGui) then
-            ParentGui = ScreenGui
-        end
-        TooltipLabel.Parent = ParentGui
-
-        TooltipLabel.Text = TooltipTable.Disabled and DisabledInfoStr or InfoStr
-        TooltipLabel.Visible = true
-
-        while
-            (Library.Toggled or Library.ActiveLoading)
-            and not Library.ActiveDialog
-            and Library:MouseIsOverFrame(HoverInstance, Mouse)
-            and not (CurrentMenu and Library:MouseIsOverFrame(CurrentMenu.Menu, Mouse))
-        do
-            TooltipLabel.Position = UDim2.fromOffset(
-                Mouse.X + (Library.ShowCustomCursor and 8 or 14),
-                Mouse.Y + (Library.ShowCustomCursor and 8 or 12)
-            )
-
-            RunService.RenderStepped:Wait()
-        end
-
-        TooltipLabel.Visible = false
-        CurrentHoverInstance = nil
-    end
-
-    local function GiveSignal(Connection: RBXScriptConnection | RBXScriptSignal)
-        local ConnectionType = typeof(Connection)
-        if Connection and (ConnectionType == "RBXScriptConnection" or ConnectionType == "RBXScriptSignal") then
-            table.insert(TooltipTable.Signals, Connection)
-        end
-
-        return Connection
-    end
-
-    GiveSignal(HoverInstance.MouseEnter:Connect(DoHover))
-    GiveSignal(HoverInstance.MouseMoved:Connect(DoHover))
-    GiveSignal(HoverInstance.MouseLeave:Connect(function()
-        if CurrentHoverInstance ~= HoverInstance then
-            return
-        end
-
-        TooltipLabel.Visible = false
-        CurrentHoverInstance = nil
-    end))
-
-    function TooltipTable:Destroy()
-        for Index = #TooltipTable.Signals, 1, -1 do
-            local Connection = table.remove(TooltipTable.Signals, Index)
-            if Connection and Connection.Connected then
-                Connection:Disconnect()
-            end
-        end
-
-        if CurrentHoverInstance == HoverInstance then
-            if TooltipLabel then
-                TooltipLabel.Visible = false
-            end
-
-            CurrentHoverInstance = nil
-        end
-    end
-
-    table.insert(Tooltips, TooltipLabel)
-    return TooltipTable
 end
 
 function Library:OnUnload(Callback)
@@ -4964,6 +4854,11 @@ do
         end
         local Info = GetInfo(...)
 
+        if Info.Description == nil and typeof(Info.Tooltip) == "string" then
+            Info.Description = Info.Tooltip
+        end
+        local HasDescription = Info.Description ~= nil and Info.Description ~= ""
+
         local Groupbox = self
         local Container = Groupbox.Container
 
@@ -4989,15 +4884,21 @@ do
 
         local Holder = New("Frame", {
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 0, 21),
+            Size = UDim2.new(1, 0, 0, HasDescription and 42 or 21),
             Parent = Container,
+        })
+
+        local RowFrame = New("Frame", {
+            BackgroundTransparency = 1,
+            Size = UDim2.new(1, 0, 0, 21),
+            Parent = Holder,
         })
 
         New("UIListLayout", {
             FillDirection = Enum.FillDirection.Horizontal,
             HorizontalFlex = Enum.UIFlexAlignment.Fill,
             Padding = UDim.new(0, 9),
-            Parent = Holder,
+            Parent = RowFrame,
         })
 
         local function CreateButton(Button)
@@ -5009,7 +4910,7 @@ do
                 TextSize = 14,
                 TextTransparency = 0.4,
                 Visible = Button.Visible,
-                Parent = Holder,
+                Parent = RowFrame,
             })
 
             local Stroke = New("UIStroke", {
@@ -5105,6 +5006,21 @@ do
 
         Button.Base, Button.Stroke = CreateButton(Button)
         InitEvents(Button)
+
+        local ButtonDescLabel
+        if HasDescription then
+            ButtonDescLabel = New("TextLabel", {
+                BackgroundTransparency = 1,
+                Position = UDim2.fromOffset(8, 23),
+                Size = UDim2.new(1, -16, 0, 16),
+                Text = Info.Description,
+                TextSize = 13,
+                TextTransparency = 0.45,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextWrapped = true,
+                Parent = Holder,
+            })
+        end
 
         function Button:AddButton(...)
             local Info = GetInfo(...)
@@ -7065,9 +6981,17 @@ do
             Type = "Dropdown",
         }
 
+        local HasDesc = Info.Description ~= nil and Info.Description ~= ""
+        local DropdownHeight
+        if Dropdown.Text then
+            DropdownHeight = HasDesc and (Library.IsMobile and 71 or 56) or (Library.IsMobile and 55 or 45)
+        else
+            DropdownHeight = HasDesc and (Library.IsMobile and 57 or 42) or (Library.IsMobile and 40 or 28)
+        end
+
         local Holder = New("Frame", {
             BackgroundTransparency = 1,
-            Size = UDim2.new(1, 0, 0, Dropdown.Text and (Library.IsMobile and 55 or 45) or (Library.IsMobile and 40 or 28)),
+            Size = UDim2.new(1, 0, 0, DropdownHeight),
             Visible = Dropdown.Visible,
             Parent = Container,
         })
@@ -7082,6 +7006,22 @@ do
             ZIndex = 3,
             Parent = Holder,
         })
+
+        local DropdownDescLabel
+        if HasDesc then
+            DropdownDescLabel = New("TextLabel", {
+                BackgroundTransparency = 1,
+                Position = UDim2.fromOffset(0, Dropdown.Text and 16 or 2),
+                Size = UDim2.new(1, 0, 0, 16),
+                Text = Info.Description,
+                TextSize = 13,
+                TextTransparency = 0.45,
+                TextXAlignment = Enum.TextXAlignment.Left,
+                TextWrapped = true,
+                ZIndex = 3,
+                Parent = Holder,
+            })
+        end
 
         local DisplayContainer = New("TextButton", {
             AnchorPoint = Vector2.new(0, 1),
@@ -9261,6 +9201,8 @@ function Library:SetNotifySide(Side: string)
 end
 
 function Library:Notify(...)
+    if _G.KatchiSilentConfigLoad then return end
+
     local Data = {}
     local Info = select(1, ...)
 
