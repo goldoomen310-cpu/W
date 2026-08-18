@@ -1512,7 +1512,10 @@ local function GetWrappedTextHeight(Text: string, Label: TextLabel | TextButton,
     Width = math.max(1, Width)
 
     local _, Height = Library:GetTextBounds(Text, Label.FontFace, Label.TextSize, Width)
-    return math.max(MinimumHeight or Label.TextSize, math.ceil(Height))
+    -- Add a half-line of slack so the measured height always covers the
+    -- real rendered height (GetTextBoundsAsync can under-measure wrapped
+    -- text). The row box grows to fit the text instead of clipping it.
+    return math.max(MinimumHeight or Label.TextSize, math.ceil(Height + Label.TextSize * 0.5))
 end
 
 local function NormalizeTabName(Name: string?): string
@@ -2478,8 +2481,9 @@ function Library:AddContextMenu(
             ClipsDescendants = true,
             ScrollBarImageColor3 = "OutlineColor",
             ScrollBarImageTransparency = 0.2,
-            ScrollBarThickness = List == 2 and 2 or 0,
+            ScrollBarThickness = Library.IsMobile and 4 or (List == 2 and 2 or 0),
             ScrollingDirection = Enum.ScrollingDirection.Y,
+            ScrollingEnabled = true,
             Size = typeof(Size) == "function" and Size() or Size,
             TopImage = "rbxasset://textures/ui/Scroll/scroll-middle.png",
             Visible = false,
@@ -2501,6 +2505,59 @@ function Library:AddContextMenu(
             Parent = Menu,
         })
     )
+
+    if List and Library.IsMobile then
+        -- Manual touch scrolling: some Roblox mobile builds don't reliably
+        -- scroll a ScrollingFrame whose content is a pool of tall buttons, so
+        -- drive CanvasPosition directly from the finger drag instead.
+        local TouchDragInput = nil
+        local TouchStartY = nil
+        local TouchStartCanvas = nil
+        local TouchDragConns = {}
+
+        local function EndMenuTouchDrag()
+            TouchDragInput = nil
+            TouchStartY = nil
+            TouchStartCanvas = nil
+
+            for _, Conn in TouchDragConns do
+                Conn:Disconnect()
+            end
+            table.clear(TouchDragConns)
+
+            Menu.ScrollingEnabled = true
+        end
+
+        Menu.InputBegan:Connect(function(Input)
+            if TouchDragInput or Input.UserInputType ~= Enum.UserInputType.Touch then
+                return
+            end
+
+            TouchDragInput = Input
+            TouchStartY = Input.Position.Y
+            TouchStartCanvas = Menu.CanvasPosition.Y
+            Menu.ScrollingEnabled = false
+
+            table.insert(TouchDragConns, Input.Changed:Connect(function()
+                if Input.UserInputState == Enum.UserInputState.End then
+                    EndMenuTouchDrag()
+                end
+            end))
+            table.insert(TouchDragConns, UserInputService.InputChanged:Connect(function(Move)
+                if Move ~= TouchDragInput or Move.UserInputType ~= Enum.UserInputType.Touch then
+                    return
+                end
+
+                local MenuScale = Menu:FindFirstChildOfClass("UIScale")
+                local MaxScroll = math.max(0, Menu.CanvasSize.Y.Offset - Menu.Size.Y.Offset)
+                local DeltaY = (Move.Position.Y - TouchStartY) / (MenuScale and MenuScale.Scale or 1)
+                local NewY = math.clamp(TouchStartCanvas + DeltaY, 0, MaxScroll)
+                Menu.CanvasPosition = Vector2.new(Menu.CanvasPosition.X, NewY)
+            end))
+        end)
+
+        Menu.Destroying:Once(EndMenuTouchDrag)
+    end
 
     if List then
         New("UIPadding", {
@@ -2624,6 +2681,18 @@ function Library:AddContextMenu(
 
         local TargetSize = typeof(Table.Size) == "function" and Table.Size() or Table.Size
 
+        -- Keep floating menus inside the viewport so they can't open half
+        -- off-screen (important for tall dropdowns on mobile).
+        local ViewportSize = ParentGui.AbsoluteSize
+        if ViewportSize.X > 0 then
+            local ClampX = math.max(4, ViewportSize.X - TargetSize.X.Offset - 4)
+            local ClampY = math.max(4, ViewportSize.Y - TargetSize.Y.Offset - 4)
+            Menu.Position = UDim2.fromOffset(
+                math.clamp(Menu.Position.X.Offset, 4, ClampX),
+                math.clamp(Menu.Position.Y.Offset, 4, ClampY)
+            )
+        end
+
         if typeof(ActiveCallback) == "function" then
             Library:SafeCallback(ActiveCallback, true)
         end
@@ -2707,6 +2776,15 @@ function Library:AddContextMenu(
                 Menu.Position = UDim2.fromOffset(
                     math.floor(Holder.AbsolutePosition.X + Offset[1]),
                     math.floor(Holder.AbsolutePosition.Y + Offset[2])
+                )
+            end
+
+            local RepositionViewport = ParentGui.AbsoluteSize
+            local MenuAbsSize = Menu.AbsoluteSize
+            if RepositionViewport.X > 0 then
+                Menu.Position = UDim2.fromOffset(
+                    math.clamp(Menu.Position.X.Offset, 4, math.max(4, RepositionViewport.X - MenuAbsSize.X - 4)),
+                    math.clamp(Menu.Position.Y.Offset, 4, math.max(4, RepositionViewport.Y - MenuAbsSize.Y - 4))
                 )
             end
 
@@ -7194,13 +7272,18 @@ do
         local PoolSize = math.max(1, Info.MaxVisibleDropdownItems + 2)
         local RowInset = 8
         local RowGap = 3
+        -- Dropdown selection/hover highlights use a fixed neutral light gray rather
+        -- than Library.Scheme.AccentColor, so they stay readable and subtle even if
+        -- the theme's accent color is something loud (e.g. pink/magenta).
+        local HighlightColor = Color3.fromRGB(198, 198, 204)
         local Pool = {}
         local FilteredEntries = {}
 
         function Dropdown:RecalculateListSize(Count)
             local ItemCount = Count or #FilteredEntries
             local Padding = 16
-            local MaxHeight = (Info.MaxVisibleDropdownItems * ItemHeight) + Padding
+            local MaxVisible = Library.IsMobile and math.min(Info.MaxVisibleDropdownItems, 6) or Info.MaxVisibleDropdownItems
+            local MaxHeight = (MaxVisible * ItemHeight) + Padding
             local Y = math.clamp((ItemCount * ItemHeight) + Padding, 0, MaxHeight)
 
             MenuTable.Menu.CanvasSize = UDim2.fromOffset(0, (ItemCount * ItemHeight) + Padding)
@@ -7618,7 +7701,7 @@ do
                 end
 
                 Container.BackgroundColor3 = Selected
-                    and Library:GetBetterColor(Library.Scheme.AccentColor, -2)
+                    and HighlightColor
                     or Library.Scheme.ElevatedColor
                 Container.BackgroundTransparency = Selected and 0.82 or 0.94
                 Button.TextTransparency = Entry.IsDisabled and 0.72 or Selected and 0 or 0.22
@@ -7627,7 +7710,7 @@ do
                     BackgroundTransparency = Selected and 0.82 or 0.94,
                 }):Play()
                 TweenService:Create(ContainerStroke, Library.TweenInfo, {
-                    Color = Selected and Library.Scheme.AccentColor or Library.Scheme.OutlineColor,
+                    Color = Selected and HighlightColor or Library.Scheme.OutlineColor,
                     Transparency = Selected and 0.15 or 0.75,
                 }):Play()
                 TweenService:Create(SelectionIndicator, Library.TweenInfo, {
@@ -7657,7 +7740,7 @@ do
                 if not Selected then
                     TweenService:Create(Container, Library.TweenInfo, {
                         BackgroundTransparency = 0.88,
-                        BackgroundColor3 = Library:GetBetterColor(Library.Scheme.ElevatedColor, 8),
+                        BackgroundColor3 = HighlightColor,
                     }):Play()
                     TweenService:Create(ContainerStroke, Library.TweenInfo, {
                         Transparency = 0.4,
@@ -9788,6 +9871,13 @@ function Library:CreateWindow(WindowInfo)
     local IsCompact = WindowInfo.SidebarCompacted
     local LastExpandedWidth = InitialLeftWidth
 
+    -- Declared here (not inside the `do...end` block below) because Window:Minimize,
+    -- Window:Maximize, Window:Restore, and UpdateWindowControls are all defined after
+    -- that block closes and need to reference these same instances.
+    local MinimizeButton, MaximizeButton, CloseButton
+    local MinimizeIconLabel, MaximizeIconLabel
+    local MobileRestoreButton
+
     do
         Library.KeybindFrame, Library.KeybindContainer = Library:AddDraggableMenu("Keybinds")
         Library.KeybindFrame.AnchorPoint = Vector2.new(0, 0.5)
@@ -10071,9 +10161,6 @@ function Library:CreateWindow(WindowInfo)
             Parent = WindowControls,
         })
 
-        local MinimizeButton, MaximizeButton, CloseButton
-        local MinimizeIconLabel, MaximizeIconLabel
-
         local function CreateWindowButton(Name, Icon, HoverColor, Callback)
             local Button = New("TextButton", {
                 BackgroundColor3 = HoverColor,
@@ -10190,7 +10277,6 @@ function Library:CreateWindow(WindowInfo)
         end
 
         --// Mobile Restore Button (shows when minimized) \\--
-        local MobileRestoreButton
         if Library.IsMobile then
             MobileRestoreButton = New("TextButton", {
                 AnchorPoint = Vector2.new(0.5, 1),
