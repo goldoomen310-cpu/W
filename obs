@@ -10217,7 +10217,31 @@ function Library:CreateWindow(WindowInfo)
                 "Close",
                 CloseIcon,
                 Color3.fromRGB(239, 68, 68),
-                function() Window:Close() end
+                function()
+                    Window:AddDialog("CloseConfirm", {
+                        Title = "Close Window",
+                        Description = "This will destroy the window, do you want to continue?",
+                        AutoDismiss = false,
+                        FooterButtons = {
+                            {
+                                Id = "No",
+                                Title = "No",
+                                Variant = "Secondary",
+                                Callback = function(Dialog)
+                                    Dialog:Dismiss()
+                                end,
+                            },
+                            {
+                                Id = "Yes",
+                                Title = "Yes",
+                                Variant = "Destructive",
+                                Callback = function()
+                                    Library:Unload()
+                                end,
+                            },
+                        },
+                    })
+                end
             )
         end
 
@@ -10536,6 +10560,10 @@ function Library:CreateWindow(WindowInfo)
         PreviousSize = MainFrame.Size,
         PreviousPosition = MainFrame.Position,
     }
+
+    -- Persistent copy of the game's cursor state so minimize/close can restore
+    -- it even though the cursor renderstep forces it off while the window is open.
+    local SavedMouseIconEnabled = true
 
     local function SetWindowControlIcon(IconLabel, Icon)
         if not IconLabel or not Icon then return end
@@ -12828,9 +12856,10 @@ function Library:CreateWindow(WindowInfo)
             ModalElement.Modal = Library.Toggled
         end
 
+        local ShowCursorBinding = Library.ShowCursorBinding
+
         if Library.Toggled and not Library.IsMobile then
-            local OldMouseIconEnabled = UserInputService.MouseIconEnabled
-            local ShowCursorBinding = Library.ShowCursorBinding
+            SavedMouseIconEnabled = UserInputService.MouseIconEnabled
             pcall(function()
                 RunService:UnbindFromRenderStep(ShowCursorBinding)
             end)
@@ -12841,13 +12870,19 @@ function Library:CreateWindow(WindowInfo)
                 Cursor.Visible = Library.ShowCustomCursor
 
                 if not (Library.Toggled and ScreenGui and ScreenGui.Parent) then
-                    UserInputService.MouseIconEnabled = OldMouseIconEnabled
+                    UserInputService.MouseIconEnabled = SavedMouseIconEnabled
                     Cursor.Visible = false
                     RunService:UnbindFromRenderStep(ShowCursorBinding)
                 end
             end)
         elseif not Library.Toggled then
             TooltipLabel.Visible = false
+
+            UserInputService.MouseIconEnabled = SavedMouseIconEnabled
+            Cursor.Visible = false
+            pcall(function()
+                RunService:UnbindFromRenderStep(ShowCursorBinding)
+            end)
 
             for _, Option in Library.Options do
                 if Option.Type == "ColorPicker" then
