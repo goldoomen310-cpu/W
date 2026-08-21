@@ -7117,24 +7117,26 @@ do
             local TitleHeight = 0
             local DescHeight = 0
 
+            -- Walk the text block top-to-bottom so every combination
+            -- (title-only, description-only, both) reserves its full height.
+            local Cursor = 0
+
             if HasText then
                 TitleHeight = GetWrappedTextHeight(Dropdown.Text, Label, Width, 14)
                 Label.Size = UDim2.new(1, 0, 0, TitleHeight)
+                Cursor = TitleHeight + 3
             end
 
-            local DescTop = 0
             if DropdownDescLabel then
-                DescTop = HasText and (TitleHeight + 3) or 0
                 DescHeight = GetWrappedTextHeight(Info.Description, DropdownDescLabel, Width, 14)
-                DropdownDescLabel.Position = UDim2.fromOffset(0, DescTop)
+                DropdownDescLabel.Position = UDim2.fromOffset(0, Cursor)
                 DropdownDescLabel.Size = UDim2.new(1, 0, 0, DescHeight)
+                Cursor += DescHeight + 5
             end
-
-            local ContentBottom = DescTop + DescHeight + ((DropdownDescLabel and HasText) and 5 or 0)
 
             -- DisplayContainer stays bottom-anchored; grow the holder so there is
             -- always room for the text block above it.
-            Holder.Size = UDim2.new(1, 0, 0, ContentBottom + (Library.IsMobile and 36 or 21) + 3)
+            Holder.Size = UDim2.new(1, 0, 0, Cursor + (Library.IsMobile and 36 or 21) + 3)
             Groupbox:Resize()
         end
 
