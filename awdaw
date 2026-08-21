@@ -6936,7 +6936,7 @@ do
             end
 
             TweenService:Create(Knob, Library.TweenInfo, { Size = UDim2.fromOffset(Info.Compact and 14 or 18, Info.Compact and 14 or 18) }):Play()
-            TweenService:Create(KnobStroke, Library.TweenInfo, { Color = "DarkColor", Thickness = 1 }):Play()
+            TweenService:Create(KnobStroke, Library.TweenInfo, { Color = Library.Scheme.DarkColor, Thickness = 1 }):Play()
 
             if Library.ActiveTab then
                 for _, Side in Library.ActiveTab.Sides do
