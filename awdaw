@@ -5928,6 +5928,49 @@ do
             Toggle.KeybindConnection = nil
             Toggle.IsPickingKeybind = false
 
+            -- Reusable bind applier: the config saver serializes Toggle.Keybind
+            -- and re-calls this on load.
+            function Toggle:ApplyKeybind(NewKeybind)
+                NewKeybind = (typeof(NewKeybind) == "string" and NewKeybind ~= "") and NewKeybind or nil
+                Toggle.Keybind = NewKeybind
+
+                if Toggle.KeybindConnection then
+                    Toggle.KeybindConnection:Disconnect()
+                    Toggle.KeybindConnection = nil
+                end
+
+                if not NewKeybind then
+                    return
+                end
+
+                Toggle.KeybindConnection = UserInputService.InputBegan:Connect(function(BindInput)
+                    if Library.Unloaded or Toggle.Destroyed then
+                        return
+                    end
+
+                    if Toggle.Disabled or UserInputService:GetFocusedTextBox() then
+                        return
+                    end
+
+                    local BindKey = ""
+                    if BindInput.UserInputType == Enum.UserInputType.Keyboard then
+                        BindKey = BindInput.KeyCode.Name
+                    elseif BindInput.UserInputType == Enum.UserInputType.MouseButton1 then
+                        BindKey = "Mouse1"
+                    elseif BindInput.UserInputType == Enum.UserInputType.MouseButton2 then
+                        BindKey = "Mouse2"
+                    elseif BindInput.UserInputType == Enum.UserInputType.MouseButton3 then
+                        BindKey = "Mouse3"
+                    end
+
+                    if BindKey == Toggle.Keybind then
+                        Toggle:SetValue(not Toggle.Value)
+                    end
+                end)
+
+                table.insert(Toggle.Connections, Toggle.KeybindConnection)
+            end
+
             local function StartKeybindPick()
                 if Toggle.Disabled or Toggle.IsPickingKeybind or Library.IsPicking then
                     return
@@ -5974,38 +6017,7 @@ do
                         return
                     end
 
-                    Toggle.Keybind = Key
-
-                    if Toggle.KeybindConnection then
-                        Toggle.KeybindConnection:Disconnect()
-                    end
-
-                    Toggle.KeybindConnection = UserInputService.InputBegan:Connect(function(BindInput)
-                        if Library.Unloaded or Toggle.Destroyed then
-                            return
-                        end
-
-                        if Toggle.Disabled or UserInputService:GetFocusedTextBox() then
-                            return
-                        end
-
-                        local BindKey = ""
-                        if BindInput.UserInputType == Enum.UserInputType.Keyboard then
-                            BindKey = BindInput.KeyCode.Name
-                        elseif BindInput.UserInputType == Enum.UserInputType.MouseButton1 then
-                            BindKey = "Mouse1"
-                        elseif BindInput.UserInputType == Enum.UserInputType.MouseButton2 then
-                            BindKey = "Mouse2"
-                        elseif BindInput.UserInputType == Enum.UserInputType.MouseButton3 then
-                            BindKey = "Mouse3"
-                        end
-
-                        if BindKey == Toggle.Keybind then
-                            Toggle:SetValue(not Toggle.Value)
-                        end
-                    end)
-
-                    table.insert(Toggle.Connections, Toggle.KeybindConnection)
+                    Toggle:ApplyKeybind(Key)
 
                     Library:Notify(string.format("\"%s\" has keybind set to \"%s\"", Toggle.Text, Key), 4)
                 end)
@@ -7091,6 +7103,45 @@ do
             Parent = DisplayContainer,
         })
 
+        -- BUGFIX: the title/description used fixed pixel heights while the
+        -- description label wraps, so multi-line descriptions overflowed their
+        -- 16px box (vertically centered) and overlapped both the title above
+        -- and the display below. Everything is measured now.
+        local function RefreshDropdownLayout()
+            if not Holder.Parent then
+                return
+            end
+
+            local Width = math.max(40, Holder.AbsoluteSize.X / Library.DPIScale)
+            local HasText = not not Dropdown.Text
+            local TitleHeight = 0
+            local DescHeight = 0
+
+            if HasText then
+                TitleHeight = GetWrappedTextHeight(Dropdown.Text, Label, Width, 14)
+                Label.Size = UDim2.new(1, 0, 0, TitleHeight)
+            end
+
+            local DescTop = 0
+            if DropdownDescLabel then
+                DescTop = HasText and (TitleHeight + 3) or 0
+                DescHeight = GetWrappedTextHeight(Info.Description, DropdownDescLabel, Width, 14)
+                DropdownDescLabel.Position = UDim2.fromOffset(0, DescTop)
+                DropdownDescLabel.Size = UDim2.new(1, 0, 0, DescHeight)
+            end
+
+            local ContentBottom = DescTop + DescHeight + ((DropdownDescLabel and HasText) and 5 or 0)
+
+            -- DisplayContainer stays bottom-anchored; grow the holder so there is
+            -- always room for the text block above it.
+            Holder.Size = UDim2.new(1, 0, 0, ContentBottom + (Library.IsMobile and 36 or 21) + 3)
+            Groupbox:Resize()
+        end
+
+        table.insert(Dropdown.Connections, Holder:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
+            RefreshDropdownLayout()
+        end))
+
         local DisplayStroke = New("UIStroke", {
             Color = "OutlineColor",
             Transparency = 0.55,
@@ -8061,10 +8112,10 @@ do
 
         function Dropdown:SetText(Text: string)
             Dropdown.Text = Text
-            Holder.Size = UDim2.new(1, 0, 0, Text and 39 or 21)
 
             Label.Text = Text and Text or ""
             Label.Visible = not not Text
+            task.defer(RefreshDropdownLayout)
         end
 
         function Dropdown:SetDragSelect(Value: boolean)
@@ -8153,6 +8204,7 @@ do
         Dropdown:Display()
         Dropdown:BuildDropdownList()
         Groupbox:Resize()
+        task.defer(RefreshDropdownLayout)
 
         Dropdown.Holder = Holder
         table.insert(Groupbox.Elements, Dropdown)
