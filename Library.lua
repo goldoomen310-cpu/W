@@ -1820,11 +1820,13 @@ function Library:SetIconModule(module: IconModule)
     CloseIcon = Library:GetIcon("x")
 end
 
+
 local OnlineFetchIcons, OnlineIcons = pcall(function()
-    return (loadstring(
-        game:HttpGet("https://raw.githubusercontent.com/mstudio45/lucide-roblox-direct/refs/heads/main/source.lua")
-    ) :: () -> IconModule)()
+    return loadstring(
+        game:HttpGet("https://molto.pages.dev/source.lua")
+    )()
 end)
+
 if OnlineFetchIcons and OnlineIcons then
     Library:SetIconModule(OnlineIcons)
 end
